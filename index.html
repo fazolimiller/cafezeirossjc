@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Encomendas · Cafezeiros SJC</title>
+  <meta name="description" content="Compra coletiva mensal de cafés especiais do grupo Cafezeiros SJC — São José dos Campos.">
+  <meta name="theme-color" content="#1e3a2b">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="container topo__barra">
+      <a class="marca" href="./">
+        <img class="marca__logo" src="assets/logo.svg" alt="">
+        <span><span class="marca__nome">Cafezeiros SJC</span><span class="marca__local">São José dos Campos</span></span>
+      </a>
+      <a class="topo__link" href="admin.html">Organização</a>
+    </div>
+  </header>
+  <div id="faixa-demo" class="faixa-demo oculto">Modo demonstração — os pedidos ficam salvos só neste navegador.</div>
+
+  <section class="hero">
+    <div class="container hero__grade">
+    <div class="hero__conteudo">
+      <span class="hero__selo">Compra coletiva de cafés especiais</span>
+      <h1>Encomenda de <em id="rodada-titulo">…</em></h1>
+      <p>Café bom une pessoas. Escolha seus cafés, confirme o pedido e pague via PIX — a gente cuida do resto.</p>
+      <span id="estado" class="estado">Carregando…</span>
+    </div>
+    <img class="hero__foto" src="assets/cafe-bom-une-pessoas.jpg" alt="Saca de café com a frase “Café bom une pessoas.”">
+    </div>
+  </section>
+
+  <nav class="icones" aria-label="Sobre o grupo">
+    <ul class="container">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke-width="1.4"><ellipse cx="12" cy="12" rx="6.5" ry="9" transform="rotate(30 12 12)"/><path d="M9 4.5c3 4 3 11 6 15"/></svg>Cafés<br>especiais</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke-width="1.4"><circle cx="12" cy="7" r="2.6"/><circle cx="5.5" cy="9" r="2"/><circle cx="18.5" cy="9" r="2"/><path d="M7.5 18v-2a4.5 4.5 0 0 1 9 0v2M2.5 18v-1.5a3 3 0 0 1 4-2.8M21.5 18v-1.5a3 3 0 0 0-4-2.8"/></svg>Compra<br>coletiva</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke-width="1.4"><circle cx="12" cy="9" r="6"/><path d="M12 6.2l.9 1.8 2 .3-1.4 1.4.3 2-1.8-1-1.8 1 .3-2-1.4-1.4 2-.3z"/><path d="M8.5 14l-1.5 7 5-2.5 5 2.5-1.5-7"/></svg>Qualidade<br>garantida</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke-width="1.4"><path d="M4 20c0-7 4-11 10-12-1 6-4 10-10 12zM4 20c2-3 4-5 7-7"/><path d="M13 17c1-6 4-10 8-12 0 5-3 10-8 12zM13 17c2-3 4-6 6-8"/></svg>Torradores<br>selecionados</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke-width="1.4"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>São José<br>dos Campos</li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <section id="tela-loja" class="secao">
+      <div class="passos">
+        <div class="passo"><strong>Escolha os cafés</strong><span>Defina a quantidade de cada um.</span></div>
+        <div class="passo"><strong>Envie o pedido</strong><span>Informe nome e WhatsApp.</span></div>
+        <div class="passo"><strong>Pague via PIX</strong><span>QR Code e copia-e-cola com o valor exato.</span></div>
+      </div>
+
+      <div id="aviso" class="aviso oculto"></div>
+      <div id="grupo" class="aviso aviso--grupo oculto">
+        <span>Só faça o pedido se estiver no <strong>grupo do WhatsApp</strong> dos Cafezeiros SJC. Ainda não está?</span>
+        <a id="link-grupo" class="botao botao--peq" target="_blank" rel="noopener">Entrar no grupo</a>
+      </div>
+
+      <div class="loja">
+        <div>
+          <div class="secao__titulo">
+            <h2>Cafés deste mês</h2>
+            <p id="prazo"></p>
+          </div>
+          <div id="cafes" class="cafes"><p class="carregando">Carregando cafés…</p></div>
+        </div>
+
+        <aside class="carrinho" aria-labelledby="titulo-carrinho">
+          <h2 id="titulo-carrinho">Seu pedido</h2>
+          <ul id="carrinho-itens" class="carrinho__itens"></ul>
+          <p id="carrinho-vazio" class="carrinho__vazio">Nenhum café escolhido ainda.</p>
+          <dl id="carrinho-taxas" class="carrinho__taxas oculto"></dl>
+          <div class="carrinho__total"><span>Total</span><strong id="carrinho-total">R$ 0,00</strong></div>
+
+          <form id="form-pedido" novalidate>
+            <div class="campo">
+              <label for="nome">Nome</label>
+              <input id="nome" name="nome" autocomplete="name" required maxlength="80">
+            </div>
+            <div class="campo">
+              <label for="telefone">WhatsApp (com DDD)</label>
+              <input id="telefone" name="telefone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(12) 99999-9999" required>
+            </div>
+            <div class="campo">
+              <label for="observacoes">Observações</label>
+              <textarea id="observacoes" name="observacoes" maxlength="500" placeholder="Opcional"></textarea>
+            </div>
+            <button id="enviar" class="botao botao--largo" type="submit">Enviar pedido</button>
+            <p id="erro" class="erro" role="alert"></p>
+          </form>
+        </aside>
+      </div>
+    </section>
+
+    <section id="tela-confirmacao" class="secao oculto" aria-live="polite">
+      <div class="confirmacao">
+        <div class="confirmacao__topo">
+          <h2>Pedido recebido! ☕</h2>
+          <p>Pedido <strong id="conf-id"></strong> · <span id="conf-rodada"></span></p>
+        </div>
+        <div class="confirmacao__corpo">
+          <div>
+            <h3>Resumo</h3>
+            <div class="tabela-wrap">
+              <table>
+                <thead><tr><th>Café</th><th class="num">Qtd</th><th class="num">Preço</th><th class="num">Subtotal</th></tr></thead>
+                <tbody id="conf-itens"></tbody>
+                <tfoot id="conf-rodape"></tfoot>
+              </table>
+            </div>
+            <p id="conf-nome" style="color:var(--texto-suave);font-size:.92rem"></p>
+            <p>Depois de pagar, toque em <strong>“Já fiz o PIX”</strong> para avisar a organização. A confirmação final é feita por quem organiza, conferindo o extrato.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button id="ja-paguei" class="botao" type="button">Já fiz o PIX</button>
+              <a id="enviar-whats" class="botao botao--sec oculto" target="_blank" rel="noopener">Enviar comprovante no WhatsApp</a>
+              <button id="novo-pedido" class="botao botao--sec" type="button">Fazer outro pedido</button>
+            </div>
+          </div>
+          <div class="pix">
+            <h3>Pague via PIX</h3>
+            <div id="pix-qr" class="pix__qr"></div>
+            <div class="pix__valor" id="pix-valor"></div>
+            <div id="pix-dados" style="font-size:.85rem;color:var(--texto-suave)"></div>
+            <div class="copia">
+              <input id="pix-copia" readonly aria-label="PIX copia e cola">
+              <button id="copiar-pix" class="botao botao--peq" type="button">Copiar</button>
+            </div>
+            <p id="pix-sem-chave" class="erro oculto">A chave PIX ainda não foi cadastrada pela organização.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao nao-imprimir" aria-label="Fotos">
+      <div class="galeria">
+        <img src="assets/saca.jpg" alt="Saca de grãos de café torrados" loading="lazy">
+        <img src="assets/montanha.jpg" alt="Xícara fumegante diante das montanhas" loading="lazy">
+        <img src="assets/caneca.jpg" alt="Caneca verde esmaltada dos Cafezeiros SJC" loading="lazy">
+        <img src="assets/cidade.jpg" alt="Vista de São José dos Campos ao entardecer" loading="lazy">
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <span class="marca__nome">Cafezeiros SJC</span>
+    <p>Boas conversas começam com um bom café</p>
+  </footer>
+
+  <script src="js/vendor/qrcode.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/pix.js"></script>
+  <script src="js/catalogo-inicial.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
