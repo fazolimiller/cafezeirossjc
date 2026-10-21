@@ -91,7 +91,7 @@ h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
 .cafe--selecionado { border-color: var(--verde-2); box-shadow: 0 0 0 2px var(--verde-claro), var(--sombra); }
 .cafe__torra { font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; color: var(--cafe-2); }
 .cafe h3 { font-size: 1.15rem; font-weight: 500; margin: 0; color: var(--verde); }
-.cafe__desc { font-size: .92rem; color: var(--texto-suave); margin: 0; }
+.cafe__desc { font-size: .88rem; color: var(--texto-suave); margin: 0; white-space: pre-line; }
 .opcao { border-top: 1px dashed var(--borda); padding-top: 10px; }
 .opcao__cab { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
 .opcao__cab span { font-weight: 500; color: var(--verde); }

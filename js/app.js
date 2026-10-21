@@ -74,10 +74,10 @@
         ${c.tamanhos.map((t, ti) => `
           <div class="opcao">
             <div class="opcao__cab"><span>${Util.esc(t.peso)}</span><strong>${Util.moeda(t.preco)}</strong></div>
-            ${c.moagens.map((m, mi) => `
+            ${(c.moagens.length ? c.moagens : ['Quantidade']).map((m, mi) => `
               <div class="opcao__linha" data-chave="${ci}|${ti}|${mi}">
                 <span>${Util.esc(m)}</span>
-                <span class="qtd" role="group" aria-label="${Util.esc(`${c.nome}, ${t.peso}, ${m}`)}">
+                <span class="qtd" role="group" aria-label="${Util.esc([c.nome, t.peso, c.moagens[mi]].filter(Boolean).join(', '))}">
                   <button type="button" data-acao="-" aria-label="Diminuir" ${dis}>−</button>
                   <output aria-live="polite">0</output>
                   <button type="button" data-acao="+" aria-label="Aumentar" ${dis}>+</button>
@@ -106,14 +106,14 @@
       const [ci, ti, mi] = k.split('|').map(Number);
       const cafe = cafes[ci];
       const tamanho = cafe.tamanhos[ti];
-      return { cafe, peso: tamanho.peso, preco: tamanho.preco, moagem: cafe.moagens[mi], quantidade: quantidades[k] };
+      return { cafe, peso: tamanho.peso, preco: tamanho.preco, moagem: cafe.moagens[mi] || '', quantidade: quantidades[k] };
     });
   }
 
   function atualizarCarrinho() {
     const itens = itensEscolhidos();
     $('carrinho-itens').innerHTML = itens.map(i =>
-      `<li><span>${i.quantidade}× ${Util.esc(i.cafe.nome)}<br><small class="suave">${Util.esc(i.peso)} · ${Util.esc(i.moagem)}</small></span><span>${Util.moeda(i.preco * i.quantidade)}</span></li>`).join('');
+      `<li><span>${i.quantidade}× ${Util.esc(i.cafe.nome)}<br><small class="suave">${Util.esc([i.peso, i.moagem].filter(Boolean).join(' · '))}</small></span><span>${Util.moeda(i.preco * i.quantidade)}</span></li>`).join('');
     $('carrinho-vazio').classList.toggle('oculto', itens.length > 0);
     $('carrinho-total').textContent = Util.moeda(itens.reduce((s, i) => s + i.preco * i.quantidade, 0));
   }
@@ -160,7 +160,7 @@
     $('conf-rodada').textContent = pedido.rodada;
     $('conf-nome').textContent = `${pedido.nome} · ${Util.telefone(pedido.telefone)}`;
     $('conf-itens').innerHTML = pedido.itens.map(i => `
-      <tr><td>${Util.esc(i.cafe)}<br><small class="suave">${Util.esc(i.peso)} · ${Util.esc(i.moagem)}</small></td><td class="num">${i.quantidade}</td>
+      <tr><td>${Util.esc(i.cafe)}<br><small class="suave">${Util.esc([i.peso, i.moagem].filter(Boolean).join(' · '))}</small></td><td class="num">${i.quantidade}</td>
       <td class="num">${Util.moeda(i.preco)}</td><td class="num">${Util.moeda(i.subtotal)}</td></tr>`).join('');
     $('conf-total').textContent = Util.moeda(pedido.total);
     $('pix-valor').textContent = Util.moeda(pedido.total);

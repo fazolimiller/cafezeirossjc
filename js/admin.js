@@ -136,7 +136,7 @@
     return `
       <div class="cartao"><span>Pedidos</span><strong>${r.pedidos}</strong></div>
       <div class="cartao"><span>Pessoas</span><strong>${r.pessoas}</strong></div>
-      <div class="cartao"><span>Pacotes de café</span><strong>${r.pacotes}</strong></div>
+      <div class="cartao"><span>Itens</span><strong>${r.pacotes}</strong></div>
       <div class="cartao cartao--cafe"><span>Valor total</span><strong>${Util.moeda(r.total)}</strong></div>
       <div class="cartao"><span>PIX recebido</span><strong>${Util.moeda(r.recebido)}</strong></div>
       <div class="cartao cartao--alerta"><span>A receber</span><strong>${Util.moeda(r.aReceber)}</strong></div>`;
@@ -364,7 +364,7 @@
         <h2>Total por café <button class="botao botao--sec botao--peq" data-csv="cafes" type="button">CSV</button></h2>
         <div class="tabela-wrap"><table>
           <thead><tr><th>Café</th><th>Tamanho</th><th>Moagem</th><th class="num">Preço unit.</th><th class="num">Pedidos</th><th class="num">Quantidade</th><th class="num">Peso total</th><th class="num">Total</th></tr></thead>
-          <tbody>${cafes.map(c => `<tr><td>${Util.esc(c.cafe)}</td><td>${Util.esc(c.peso)}</td><td>${Util.esc(c.moagem)}</td><td class="num">${Util.moeda(c.preco)}</td><td class="num">${c.pedidos.size}</td><td class="num">${c.quantidade}</td><td class="num">${c.kg ? kg(c.kg) : '—'}</td><td class="num">${Util.moeda(c.total)}</td></tr>`).join('') || '<tr><td colspan="8" class="carregando">Sem pedidos no período.</td></tr>'}</tbody>
+          <tbody>${cafes.map(c => `<tr><td>${Util.esc(c.cafe)}</td><td>${Util.esc(c.peso)}</td><td>${Util.esc(c.moagem || '—')}</td><td class="num">${Util.moeda(c.preco)}</td><td class="num">${c.pedidos.size}</td><td class="num">${c.quantidade}</td><td class="num">${c.kg ? kg(c.kg) : '—'}</td><td class="num">${Util.moeda(c.total)}</td></tr>`).join('') || '<tr><td colspan="8" class="carregando">Sem pedidos no período.</td></tr>'}</tbody>
           <tfoot><tr><td colspan="5">Total</td><td class="num">${totalQtd}</td><td class="num">${kg(totalKg)}</td><td class="num">${Util.moeda(totalValor)}</td></tr></tfoot>
         </table></div>
       </div>
@@ -373,7 +373,7 @@
       <div class="relatorio-bloco">
         <h2>Por rodada <button class="botao botao--sec botao--peq" data-csv="rodadas" type="button">CSV</button></h2>
         <div class="tabela-wrap"><table>
-          <thead><tr><th>Rodada</th><th class="num">Pedidos</th><th class="num">Pacotes</th><th class="num">Total</th><th class="num">Recebido</th><th class="num">A receber</th></tr></thead>
+          <thead><tr><th>Rodada</th><th class="num">Pedidos</th><th class="num">Itens</th><th class="num">Total</th><th class="num">Recebido</th><th class="num">A receber</th></tr></thead>
           <tbody>${rods.map(x => `<tr><td>${Util.esc(x.rodada)}</td><td class="num">${x.pedidos}</td><td class="num">${x.pacotes}</td><td class="num">${Util.moeda(x.total)}</td><td class="num">${Util.moeda(x.recebido)}</td><td class="num">${Util.moeda(x.aReceber)}</td></tr>`).join('')}</tbody>
           <tfoot><tr><td>Total</td><td class="num">${r.pedidos}</td><td class="num">${r.pacotes}</td><td class="num">${Util.moeda(r.total)}</td><td class="num">${Util.moeda(r.recebido)}</td><td class="num">${Util.moeda(r.aReceber)}</td></tr></tfoot>
         </table></div>
@@ -402,7 +402,7 @@
       Util.baixar(`cafes-${nome}.csv`, Util.csv(linhas));
     }
     if (b.dataset.csv === 'rodadas') {
-      const linhas = [['Rodada', 'Pedidos', 'Pacotes', 'Total', 'Recebido', 'A receber']];
+      const linhas = [['Rodada', 'Pedidos', 'Itens', 'Total', 'Recebido', 'A receber']];
       rods.forEach(x => linhas.push([x.rodada, x.pedidos, x.pacotes, x.total, x.recebido, x.aReceber]));
       Util.baixar(`rodadas-${nome}.csv`, Util.csv(linhas));
     }
@@ -452,7 +452,7 @@
         </div>
         <div class="item-cafe__corpo">
           <div class="campo"><label>Torrefação</label><input data-k="torrefacao" value="${v('torrefacao')}"></div>
-          <div class="campo"><label>Descrição</label><input data-k="descricao" value="${v('descricao')}" placeholder="Notas, origem, processo…"></div>
+          <div class="campo"><label>Descrição</label><textarea data-k="descricao" rows="4" placeholder="Produtor, região, processo, notas…">${v('descricao')}</textarea></div>
 
           <div class="campo">
             <span class="rotulo">Peso e preço</span>
@@ -472,7 +472,7 @@
           </div>
 
           <div class="campo">
-            <span class="rotulo">Moagem</span>
+            <span class="rotulo">Moagem <span class="suave">(nenhuma = acessório)</span></span>
             <div class="moagens">
               ${MOAGENS.concat(extrasMoagem).map(m => `
                 <label class="chip"><input type="checkbox" data-moagem value="${Util.esc(m)}" ${(c.moagens || []).includes(m) ? 'checked' : ''}><span>${Util.esc(m)}</span></label>`).join('')}
@@ -581,7 +581,6 @@
       if (!c.tamanhos.length) return Util.aviso(`${c.nome}: marque pelo menos um peso.`, 'erro');
       if (c.tamanhos.some(t => !t.peso || !(t.preco > 0))) return Util.aviso(`${c.nome}: informe o preço de cada peso marcado.`, 'erro');
       if (new Set(c.tamanhos.map(t => t.peso)).size < c.tamanhos.length) return Util.aviso(`${c.nome}: há pesos repetidos.`, 'erro');
-      if (!c.moagens.length) return Util.aviso(`${c.nome}: marque pelo menos uma moagem.`, 'erro');
     }
     $('salvar-cafes').disabled = true;
     try {

@@ -95,3 +95,5 @@
 
 /* Os rótulos clicáveis do editor não seguem o estilo de rótulo de campo. */
 .item-cafe .campo label.peso, .item-cafe .campo label.chip { font-size: .95rem; letter-spacing: 0; text-transform: none; color: var(--texto); }
+.item-cafe textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; background: var(--branco); }
+.rotulo .suave { text-transform: none; letter-spacing: 0; }

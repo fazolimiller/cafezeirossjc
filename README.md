@@ -70,6 +70,11 @@ branch `main` e a pasta `/ (root)`. Em alguns minutos o site fica em
 
 ### 4. Primeiro uso
 
+A planilha já começa com o catálogo atual da Sabino Torrefação (10 cafés com 250 g e
+1 kg, em grãos ou moído; o Café da Júlia só em 250 g) e os acessórios Hario. Produtos sem
+moagem marcada (como os acessórios) aparecem com uma quantidade única.
+
+
 Entre no painel, vá em **Configurações** (rodada, chave PIX, nome e cidade do recebedor,
 WhatsApp) e em **Cafés e preços** (troque os cafés de exemplo pelos de verdade).
 

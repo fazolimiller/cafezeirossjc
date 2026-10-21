@@ -21,7 +21,7 @@ const Api = (() => {
 
   /* ---------- Modo demonstração ---------- */
 
-  const CHAVE = 'cafezeiros-demo-v2';
+  const CHAVE = 'cafezeiros-demo-v3';
   const SENHA_DEMO = 'cafe';
 
   function carregar() {
@@ -34,10 +34,7 @@ const Api = (() => {
         rodada: Util.rodadaPadrao(), pedidosAbertos: 'sim', prazo: '', pixChave: '',
         pixNome: 'CAFEZEIROS SJC', pixCidade: 'SAO JOSE DOS CAMPOS', whatsapp: '', aviso: ''
       },
-      cafes: [
-        { id: 'exemplo-1', nome: 'Café de exemplo', torrefacao: 'Torrefação (editar)', descricao: 'Edite pelo painel: notas sensoriais, origem, processo.', tamanhos: [{ peso: '250 g', preco: 45 }, { peso: '1 kg', preco: 160 }], moagens: ['Em grãos', 'Moído'], ativo: true, ordem: 1 },
-        { id: 'julia', nome: 'Café da Júlia', torrefacao: 'Torrefação (editar)', descricao: 'Disponível só em 250 g.', tamanhos: [{ peso: '250 g', preco: 50 }], moagens: ['Em grãos', 'Moído'], ativo: true, ordem: 2 }
-      ],
+      cafes: JSON.parse(JSON.stringify(window.CATALOGO_INICIAL || [])),
       pedidos: []
     };
   }
@@ -69,9 +66,10 @@ const Api = (() => {
         if (!cafe || qtd <= 0) return;
         const tamanho = cafe.tamanhos.find(t => t.peso === i.peso);
         if (!tamanho) throw new Error(`Tamanho indisponível para ${cafe.nome}.`);
-        if (!cafe.moagens.includes(i.moagem)) throw new Error(`Moagem indisponível para ${cafe.nome}.`);
+        const moagem = cafe.moagens.length ? i.moagem : '';
+        if (cafe.moagens.length && !cafe.moagens.includes(moagem)) throw new Error(`Moagem indisponível para ${cafe.nome}.`);
         itens.push({
-          cafeId: cafe.id, cafe: cafe.nome, peso: tamanho.peso, moagem: i.moagem,
+          cafeId: cafe.id, cafe: cafe.nome, peso: tamanho.peso, moagem,
           preco: tamanho.preco, quantidade: qtd, subtotal: centavos(tamanho.preco * qtd)
         });
       });
@@ -119,7 +117,6 @@ const Api = (() => {
       }));
       db.cafes.forEach(c => {
         if (!c.tamanhos.length) throw new Error(`${c.nome}: informe pelo menos um tamanho com preço.`);
-        if (!c.moagens.length) throw new Error(`${c.nome}: marque pelo menos uma moagem.`);
       });
       return db.cafes;
     },
