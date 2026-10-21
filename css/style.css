@@ -82,6 +82,7 @@ h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
 .passo strong { display: block; color: var(--verde); }
 .passo span { color: var(--texto-suave); font-size: .92rem; }
 
+.aviso.aviso--grupo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-left-color: #25a35a; }
 .aviso { background: var(--creme-2); border-left: 4px solid var(--dourado); padding: 12px 16px; border-radius: 8px; margin-bottom: 22px; }
 
 /* ---------- Loja ---------- */
@@ -114,6 +115,9 @@ h1, h2, h3 { line-height: 1.2; margin: 0 0 .5em; }
 .carrinho__itens { list-style: none; margin: 0 0 12px; padding: 0; font-size: .94rem; }
 .carrinho__itens li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--borda); }
 .carrinho__vazio { color: var(--texto-suave); font-size: .94rem; }
+.carrinho__taxas { margin: 10px 0 0; font-size: .9rem; color: var(--texto-suave); }
+.carrinho__taxas div { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+.carrinho__taxas dd { margin: 0; font-variant-numeric: tabular-nums; }
 .carrinho__total { display: flex; justify-content: space-between; align-items: baseline; font-size: 1.1rem; margin: 12px 0 18px; }
 .carrinho__total strong { font-size: 1.5rem; color: var(--cafe); font-weight: 500; }
 
@@ -158,6 +162,7 @@ table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--borda); vertical-align: top; }
 th { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--texto-suave); font-weight: 500; background: var(--creme); white-space: nowrap; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tfoot tr.rodape-parcial td { font-weight: 400; color: var(--texto-suave); }
 tfoot td { font-weight: 600; background: var(--creme); border-bottom: 0; }
 tbody tr:last-child td { border-bottom: 0; }
 

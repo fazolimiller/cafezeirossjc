@@ -87,6 +87,17 @@ WhatsApp) e em **Cafés e preços** (troque os cafés de exemplo pelos de verdad
 4. No prazo, desmarque "Encomendas abertas" e use **Relatórios → Total por café** para
    fazer o pedido ao torrador.
 
+## Taxas e regras do pedido
+
+- **Taxa de administração**: 5% sobre o valor dos produtos (ajustável em Configurações).
+- **Frete**: R$ 2,00 por unidade, definido por produto em "Cafés e preços"
+  (o Café da Júlia vem com frete R$ 0,00, como no formulário antigo).
+- O total do pedido (e do PIX) = produtos + taxa + frete. Os relatórios mostram as três partes.
+- **Um pedido por pessoa em cada rodada** (identificado pelo WhatsApp). Para alguém refazer o
+  pedido, cancele o anterior no painel.
+- O aviso "Preencha uma só vez por pessoa" e o botão do grupo do WhatsApp aparecem no topo
+  do site; o link do grupo é cadastrado em Configurações.
+
 ## Sobre a chave PIX
 
 O QR Code é um PIX estático com valor e número do pedido. Cadastre a chave assim:

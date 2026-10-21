@@ -122,7 +122,11 @@
     const validos = lista.filter(p => p.status !== 'cancelado');
     const total = validos.reduce((s, p) => s + p.total, 0);
     const receb = validos.reduce((s, p) => s + recebido(p), 0);
+    const soma = k => validos.reduce((s, p) => s + (Number(p[k]) || 0), 0);
     return {
+      produtos: validos.reduce((s, p) => s + (p.subtotal === undefined || p.subtotal === '' ? p.total : Number(p.subtotal)), 0),
+      taxa: soma('taxa'),
+      frete: soma('frete'),
       pedidos: validos.length,
       pessoas: new Set(validos.map(p => p.telefone)).size,
       pacotes: validos.reduce((s, p) => s + p.itens.reduce((q, i) => q + i.quantidade, 0), 0),
@@ -137,7 +141,7 @@
       <div class="cartao"><span>Pedidos</span><strong>${r.pedidos}</strong></div>
       <div class="cartao"><span>Pessoas</span><strong>${r.pessoas}</strong></div>
       <div class="cartao"><span>Itens</span><strong>${r.pacotes}</strong></div>
-      <div class="cartao cartao--cafe"><span>Valor total</span><strong>${Util.moeda(r.total)}</strong></div>
+      <div class="cartao cartao--cafe"><span>Valor total</span><strong>${Util.moeda(r.total)}</strong>${r.taxa || r.frete ? `<small class="suave">produtos ${Util.moeda(r.produtos)} · taxa ${Util.moeda(r.taxa)} · frete ${Util.moeda(r.frete)}</small>` : ''}</div>
       <div class="cartao"><span>PIX recebido</span><strong>${Util.moeda(r.recebido)}</strong></div>
       <div class="cartao cartao--alerta"><span>A receber</span><strong>${Util.moeda(r.aReceber)}</strong></div>`;
   }
@@ -184,7 +188,7 @@
         <td><span class="ped-id">${Util.esc(p.id)}</span><br><span class="suave">${Util.data(p.criadoEm, true)}</span>${rodada === '*' ? `<br><span class="suave">${Util.esc(p.rodada)}</span>` : ''}</td>
         <td>${Util.esc(p.nome)}<br><a class="suave" href="${Util.whatsappLink(p.telefone)}" target="_blank" rel="noopener">${Util.telefone(p.telefone)}</a>${p.observacoes ? `<br><span class="suave">“${Util.esc(p.observacoes)}”</span>` : ''}</td>
         <td><ul class="ped-itens">${p.itens.map(i => `<li>${i.quantidade}× ${Util.esc(descItem(i))} <span class="suave">(${Util.moeda(i.preco)})</span></li>`).join('')}</ul></td>
-        <td class="num">${Util.moeda(p.total)}</td>
+        <td class="num">${Util.moeda(p.total)}${p.taxa || p.frete ? `<br><span class="suave">produtos ${Util.moeda(p.subtotal)}<br>taxa ${Util.moeda(p.taxa)} · frete ${Util.moeda(p.frete)}</span>` : ''}</td>
         <td>
           <select class="select-mini" data-campo="status" aria-label="Status do pedido">
             ${Object.keys(Util.STATUS).map(s => `<option value="${s}" ${s === p.status ? 'selected' : ''}>${Util.STATUS[s]}</option>`).join('')}
@@ -237,10 +241,10 @@
   });
 
   $('ped-csv').addEventListener('click', () => {
-    const linhas = [['Pedido', 'Data', 'Rodada', 'Nome', 'Telefone', 'Itens', 'Total', 'Status', 'Valor recebido', 'Pago em', 'Observações']];
+    const linhas = [['Pedido', 'Data', 'Rodada', 'Nome', 'Telefone', 'Itens', 'Produtos', 'Taxa adm.', 'Frete', 'Total', 'Status', 'Valor recebido', 'Pago em', 'Observações']];
     pedidosFiltrados().forEach(p => linhas.push([
       p.id, Util.data(p.criadoEm, true), p.rodada, p.nome, Util.telefone(p.telefone),
-      p.itens.map(i => `${i.quantidade}x ${descItem(i)}`).join(' | '), p.total, Util.STATUS[p.status] || p.status,
+      p.itens.map(i => `${i.quantidade}x ${descItem(i)}`).join(' | '), p.subtotal ?? p.total, p.taxa || 0, p.frete || 0, p.total, Util.STATUS[p.status] || p.status,
       recebido(p), Util.data(p.pagoEm), p.observacoes || ''
     ]));
     Util.baixar(`pedidos-${nomeArquivo($('ped-rodada').value === '*' ? 'todas' : $('ped-rodada').value)}.csv`, Util.csv(linhas));
@@ -365,7 +369,12 @@
         <div class="tabela-wrap"><table>
           <thead><tr><th>Café</th><th>Tamanho</th><th>Moagem</th><th class="num">Preço unit.</th><th class="num">Pedidos</th><th class="num">Quantidade</th><th class="num">Peso total</th><th class="num">Total</th></tr></thead>
           <tbody>${cafes.map(c => `<tr><td>${Util.esc(c.cafe)}</td><td>${Util.esc(c.peso)}</td><td>${Util.esc(c.moagem || '—')}</td><td class="num">${Util.moeda(c.preco)}</td><td class="num">${c.pedidos.size}</td><td class="num">${c.quantidade}</td><td class="num">${c.kg ? kg(c.kg) : '—'}</td><td class="num">${Util.moeda(c.total)}</td></tr>`).join('') || '<tr><td colspan="8" class="carregando">Sem pedidos no período.</td></tr>'}</tbody>
-          <tfoot><tr><td colspan="5">Total</td><td class="num">${totalQtd}</td><td class="num">${kg(totalKg)}</td><td class="num">${Util.moeda(totalValor)}</td></tr></tfoot>
+          <tfoot>
+            <tr><td colspan="5">Subtotal produtos</td><td class="num">${totalQtd}</td><td class="num">${kg(totalKg)}</td><td class="num">${Util.moeda(totalValor)}</td></tr>
+            <tr class="rodape-parcial"><td colspan="7">Taxa de administração</td><td class="num">${Util.moeda(r.taxa)}</td></tr>
+            <tr class="rodape-parcial"><td colspan="7">Frete</td><td class="num">${Util.moeda(r.frete)}</td></tr>
+            <tr><td colspan="7">Total geral</td><td class="num">${Util.moeda(totalValor + r.taxa + r.frete)}</td></tr>
+          </tfoot>
         </table></div>
       </div>
 
@@ -407,10 +416,11 @@
       Util.baixar(`rodadas-${nome}.csv`, Util.csv(linhas));
     }
     if (b.dataset.csv === 'pedidos') {
-      const linhas = [['Pedido', 'Data', 'Rodada', 'Nome', 'Telefone', 'Café', 'Tamanho', 'Moagem', 'Preço', 'Quantidade', 'Subtotal', 'Status', 'Valor recebido do pedido']];
+      const linhas = [['Pedido', 'Data', 'Rodada', 'Nome', 'Telefone', 'Café', 'Tamanho', 'Moagem', 'Preço', 'Quantidade', 'Subtotal', 'Status', 'Taxa adm. do pedido', 'Frete do pedido', 'Total do pedido', 'Valor recebido do pedido']];
       lista.forEach(p => p.itens.forEach((i, n) => linhas.push([
         p.id, Util.data(p.criadoEm, true), p.rodada, p.nome, Util.telefone(p.telefone),
-        i.cafe, i.peso || '', i.moagem || '', i.preco, i.quantidade, i.subtotal, Util.STATUS[p.status] || p.status, n === 0 ? recebido(p) : ''
+        i.cafe, i.peso || '', i.moagem || '', i.preco, i.quantidade, i.subtotal, Util.STATUS[p.status] || p.status,
+        n === 0 ? p.taxa || 0 : '', n === 0 ? p.frete || 0 : '', n === 0 ? p.total : '', n === 0 ? recebido(p) : ''
       ])));
       Util.baixar(`pedidos-${nome}.csv`, Util.csv(linhas));
     }
@@ -472,6 +482,10 @@
           </div>
 
           <div class="campo">
+            <label>Frete por unidade (R$)</label>
+            <input data-k="frete" type="number" step="0.01" min="0" inputmode="decimal" value="${c.frete === undefined ? 2 : Util.esc(c.frete)}" class="entrada-frete">
+          </div>
+          <div class="campo">
             <span class="rotulo">Moagem <span class="suave">(nenhuma = acessório)</span></span>
             <div class="moagens">
               ${MOAGENS.concat(extrasMoagem).map(m => `
@@ -510,6 +524,7 @@
         ...[...el.querySelectorAll('[data-peso-extra]')].map(i => ({ peso: i.value.trim(), preco: precoDe(i.closest('.peso')) }))
       ];
       c.moagens = [...el.querySelectorAll('[data-moagem]:checked')].map(i => i.value);
+      c.frete = Number(c.frete) || 0;
       return c;
     });
   }
@@ -517,7 +532,7 @@
   $('add-cafe').addEventListener('click', () => {
     dados.cafes = lerCafesDaTela();
     dados.cafes.push({
-      id: '', nome: '', torrefacao: '', descricao: '', ativo: true,
+      id: '', nome: '', torrefacao: '', descricao: '', ativo: true, frete: 2,
       tamanhos: [{ peso: '250 g', preco: '' }, { peso: '1 kg', preco: '' }], moagens: MOAGENS.slice()
     });
     renderCafes();

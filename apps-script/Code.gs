@@ -8,10 +8,11 @@
  */
 
 const ABAS = {
-  Pedidos: ['id', 'criadoEm', 'rodada', 'nome', 'telefone', 'itens', 'total', 'status', 'valorPago', 'pagoEm', 'observacoes', 'atualizadoEm'],
-  Itens: ['pedidoId', 'criadoEm', 'rodada', 'nome', 'cafeId', 'cafe', 'peso', 'moagem', 'preco', 'quantidade', 'subtotal', 'status'],
-  // tamanhos: JSON [{"peso":"250 g","preco":45}, ...]; moagens: lista separada por vírgula
-  Cafes: ['id', 'nome', 'torrefacao', 'descricao', 'tamanhos', 'moagens', 'ativo', 'ordem'],
+  Pedidos: ['id', 'criadoEm', 'rodada', 'nome', 'telefone', 'itens', 'subtotal', 'taxa', 'frete', 'total', 'status', 'valorPago', 'pagoEm', 'observacoes', 'atualizadoEm'],
+  Itens: ['pedidoId', 'criadoEm', 'rodada', 'nome', 'cafeId', 'cafe', 'peso', 'moagem', 'preco', 'quantidade', 'subtotal', 'frete', 'status'],
+  // tamanhos: JSON [{"peso":"250 g","preco":45}, ...]; moagens: lista separada por vírgula;
+  // frete: valor por unidade
+  Cafes: ['id', 'nome', 'torrefacao', 'descricao', 'tamanhos', 'moagens', 'frete', 'ativo', 'ordem'],
   Config: ['chave', 'valor']
 };
 
@@ -28,13 +29,15 @@ const CONFIG_PADRAO = {
   pedidosAbertos: 'sim',
   prazo: '',
   pixChave: '',
-  pixNome: 'CAFEZEIROS SJC',
+  pixNome: 'MILLER FAZOLI LAMBERT',
   pixCidade: 'SAO JOSE DOS CAMPOS',
   whatsapp: '',
-  aviso: ''
+  linkGrupo: '',
+  taxaAdmin: '5',
+  aviso: 'Preencha uma só vez por pessoa. Atenção aos nomes, às quantidades e se o café é em grãos ou moído.'
 };
 
-const CONFIG_PUBLICA = ['rodada', 'pedidosAbertos', 'prazo', 'pixChave', 'pixNome', 'pixCidade', 'whatsapp', 'aviso'];
+const CONFIG_PUBLICA = ['rodada', 'pedidosAbertos', 'prazo', 'pixChave', 'pixNome', 'pixCidade', 'whatsapp', 'linkGrupo', 'taxaAdmin', 'aviso'];
 
 const STATUS = ['aguardando', 'informado', 'confirmado', 'cancelado'];
 
@@ -140,20 +143,34 @@ function criarPedido_(p) {
       moagem: moagem,
       preco: tamanho.preco,
       quantidade: qtd,
-      subtotal: centavos_(tamanho.preco * qtd)
+      subtotal: centavos_(tamanho.preco * qtd),
+      frete: centavos_(cafe.frete * qtd)
     });
   });
   if (!itens.length) throw new Error('Escolha pelo menos um café.');
+
+  // Um pedido por pessoa (telefone) em cada rodada; pedidos cancelados não contam.
+  const rodada = config.rodada || rodadaPadrao_(new Date());
+  const anterior = ler_('Pedidos').filter(x =>
+    String(x.telefone) === telefone && x.rodada === rodada && x.status !== 'cancelado')[0];
+  if (anterior) {
+    throw new Error('Já existe um pedido seu nesta rodada (nº ' + anterior.id + '). ' +
+      'Para alterar, fale com a organização.');
+  }
+  const totais = calcularTotais_(itens, config.taxaAdmin);
 
   const agora = new Date();
   const pedido = {
     id: novoId_(agora),
     criadoEm: agora,
-    rodada: config.rodada || rodadaPadrao_(agora),
+    rodada: rodada,
     nome: nome,
     telefone: telefone,
     itens: itens,
-    total: centavos_(itens.reduce((s, i) => s + i.subtotal, 0)),
+    subtotal: totais.subtotal,
+    taxa: totais.taxa,
+    frete: totais.frete,
+    total: totais.total,
     status: 'aguardando',
     valorPago: '',
     pagoEm: '',
@@ -167,6 +184,14 @@ function criarPedido_(p) {
   }, i));
   anexarVarias_('Itens', linhasItens);
   return pedido;
+}
+
+// Taxa de administração (%) sobre os produtos + frete por unidade, como no formulário antigo.
+function calcularTotais_(itens, taxaAdmin) {
+  const subtotal = centavos_(itens.reduce((s, i) => s + i.subtotal, 0));
+  const frete = centavos_(itens.reduce((s, i) => s + i.frete, 0));
+  const taxa = centavos_(subtotal * (Number(String(taxaAdmin).replace(',', '.')) || 0) / 100);
+  return { subtotal: subtotal, taxa: taxa, frete: frete, total: centavos_(subtotal + taxa + frete) };
 }
 
 function informarPagamento_(p) {
@@ -212,6 +237,7 @@ function salvarCafes_(lista) {
       .map(t => ({ peso: limpar_(t.peso, 30), preco: centavos_(Number(t.preco) || 0) }))
       .filter(t => t.peso && t.preco > 0)),
     moagens: (c.moagens || []).map(m => limpar_(m, 40)).filter(String).join(', '),
+    frete: centavos_(Math.max(0, Number(c.frete) || 0)),
     ativo: c.ativo ? 'sim' : 'não',
     ordem: i + 1
   })).filter(c => c.nome);
@@ -273,6 +299,9 @@ function normalizarPedido_(p) {
     id: String(p.id),
     telefone: String(p.telefone),
     itens: itens,
+    subtotal: p.subtotal === '' || p.subtotal === undefined ? Number(p.total) || 0 : Number(p.subtotal) || 0,
+    taxa: Number(p.taxa) || 0,
+    frete: Number(p.frete) || 0,
     total: Number(p.total) || 0,
     valorPago: p.valorPago === '' ? '' : Number(p.valorPago) || 0,
     status: p.status || 'aguardando'
@@ -299,6 +328,7 @@ function lerCafes_() {
       id: String(c.id),
       tamanhos: lerTamanhos_(c.tamanhos),
       moagens: String(c.moagens || '').split(',').map(m => m.trim()).filter(String),
+      frete: Number(c.frete) || 0,
       ativo: String(c.ativo).toLowerCase() === 'sim' || c.ativo === true,
       ordem: Number(c.ordem) || 0
     }))
@@ -347,18 +377,18 @@ function garantirEstrutura_() {
 
 // Catálogo inicial (formulário Jotform de 2026). Depois, edite pelo painel em "Cafés e preços".
 const CATALOGO_INICIAL = [
-  {"id": "retiro-do-campo", "nome": "Café Retiro do Campo (Café da Júlia)", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Washington Calil Maia\nCidade: Campo do Meio - MG\nRegião: Sul de Minas\nVariedade: Catuaí Amarelo\nProcesso: Natural\nNotas: Chocolate meio amargo, amêndoas e caramelo.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 32.0}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 1},
-  {"id": "jose-alberto", "nome": "Jose Alberto", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Jose Alberto Carreta | Fazenda Córrego Fundo\nCidade: Araxá - MG\nRegião: Cerrado Mineiro\nVariedade: Topázio\nProcesso: Natural\nNotas: Baunilha, chocolate e caramelo.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 29.6}, {\"peso\": \"1 kg\", \"preco\": 89.2}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 2},
-  {"id": "natalia", "nome": "Natalia", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Natalia | Fazenda Jaguara\nCidade: São João Del Rei - MG\nRegião: Campo das Vertentes\nVariedade: Catuaí Amarelo\nProcesso: CD\nNotas: Amêndoas caramelizadas, avelã e frutas amarelas.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 31.8}, {\"peso\": \"1 kg\", \"preco\": 95.2}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 3},
-  {"id": "juscelino", "nome": "Juscelino", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Jucelino Alves | Sítio Fortuna das Águas\nCidade: Marechal Floriano - ES\nRegião: Montanhas Capixabas\nVariedade: Catucaí 2SL\nProcesso: Natural\nNotas: Algodão doce, baunilha e frutado.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 32.8}, {\"peso\": \"1 kg\", \"preco\": 98.2}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 4},
-  {"id": "pedro", "nome": "Pedro", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Pedro Brás | Fazenda Casa Brás\nCidade: Vargem Grande - MG\nRegião: Serra da Canastra\nVariedade: Catuaí Amarelo\nProcesso: Anaeróbico 24h\nNotas: Geleia de frutas amarelas, ameixa e baunilha.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 44.2}, {\"peso\": \"1 kg\", \"preco\": 146.8}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 5},
-  {"id": "viviane", "nome": "Viviane", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Viviane Araújo | Fazenda Bugio\nCidade: Campos Gerais - MG\nRegião: Sul de Minas\nVariedade: Mundo Novo\nProcesso: Anaeróbico 72h\nNotas: Frutas vermelhas, maple e baunilha.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 46.8}, {\"peso\": \"1 kg\", \"preco\": 148.2}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 6},
-  {"id": "giuseppe", "nome": "Giuseppe", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Giuseppe Verde de Oliveira | Faz. Santo Antônio\nCidade: Ibiraci - MG\nRegião: Alta Mogiana\nVariedade: Paraíso MG 2\nProcesso: Natural\nNotas: Floral, maçã Fuji e canela.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 49.8}, {\"peso\": \"1 kg\", \"preco\": 151.5}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 7},
-  {"id": "sonia", "nome": "Sônia", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Sônia da Graça Corrêa de Carvalho | Faz. Furtado\nCidade: Cajuru - SP\nRegião: Alta Mogiana\nVariedade: Catuaí 62\nProcesso: Natural\nNotas: Pamonha, frutas amarelas e chá de flores brancas.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 52.5}, {\"peso\": \"1 kg\", \"preco\": 154.5}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 8},
-  {"id": "lagoinha", "nome": "Lagoinha", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Matheus e Kadu | Fazenda Lagoinha\nCidade: Carmo da Cachoeira - MG\nRegião: Mantiqueira\nVariedade: Obatã\nProcesso: Fermentação anaeróbica 120h\nNotas: Frutas roxas, framboesa e morango.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 57.8}, {\"peso\": \"1 kg\", \"preco\": 168.8}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 9},
-  {"id": "nadia", "nome": "Nadia", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Nadia Felícia da Mata | Morro Vermelho\nCidade: Camacho - MG\nRegião: Campo das Vertentes\nVariedade: Catucaí 785/15\nProcesso: Maceração carbônica\nNotas: Xarope de guaraná, maçã verde e vinhoso.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 76.8}, {\"peso\": \"1 kg\", \"preco\": 246.8}]", "moagens": "Em grãos, Moído", "ativo": "sim", "ordem": 10},
-  {"id": "filtro-v60", "nome": "Filtro V60 Hario 02", "torrefacao": "Acessório", "descricao": "Pacote com 100 unidades.", "tamanhos": "[{\"peso\": \"Pacote c/ 100\", \"preco\": 42.8}]", "moagens": "", "ativo": "sim", "ordem": 11},
-  {"id": "kit-v60", "nome": "Kit Hario V60", "torrefacao": "Acessório", "descricao": "", "tamanhos": "[{\"peso\": \"Kit\", \"preco\": 179.25}]", "moagens": "", "ativo": "sim", "ordem": 12}
+  {"id": "retiro-do-campo", "nome": "Café Retiro do Campo (Café da Júlia)", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Washington Calil Maia\nCidade: Campo do Meio - MG\nRegião: Sul de Minas\nVariedade: Catuaí Amarelo\nProcesso: Natural\nNotas: Chocolate meio amargo, amêndoas e caramelo.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 32.0}]", "moagens": "Em grãos, Moído", "frete": 0, "ativo": "sim", "ordem": 1},
+  {"id": "jose-alberto", "nome": "Jose Alberto", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Jose Alberto Carreta | Fazenda Córrego Fundo\nCidade: Araxá - MG\nRegião: Cerrado Mineiro\nVariedade: Topázio\nProcesso: Natural\nNotas: Baunilha, chocolate e caramelo.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 29.6}, {\"peso\": \"1 kg\", \"preco\": 89.2}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 2},
+  {"id": "natalia", "nome": "Natalia", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Natalia | Fazenda Jaguara\nCidade: São João Del Rei - MG\nRegião: Campo das Vertentes\nVariedade: Catuaí Amarelo\nProcesso: CD\nNotas: Amêndoas caramelizadas, avelã e frutas amarelas.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 31.8}, {\"peso\": \"1 kg\", \"preco\": 95.2}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 3},
+  {"id": "juscelino", "nome": "Juscelino", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Jucelino Alves | Sítio Fortuna das Águas\nCidade: Marechal Floriano - ES\nRegião: Montanhas Capixabas\nVariedade: Catucaí 2SL\nProcesso: Natural\nNotas: Algodão doce, baunilha e frutado.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 32.8}, {\"peso\": \"1 kg\", \"preco\": 98.2}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 4},
+  {"id": "pedro", "nome": "Pedro", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Pedro Brás | Fazenda Casa Brás\nCidade: Vargem Grande - MG\nRegião: Serra da Canastra\nVariedade: Catuaí Amarelo\nProcesso: Anaeróbico 24h\nNotas: Geleia de frutas amarelas, ameixa e baunilha.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 44.2}, {\"peso\": \"1 kg\", \"preco\": 146.8}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 5},
+  {"id": "viviane", "nome": "Viviane", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Viviane Araújo | Fazenda Bugio\nCidade: Campos Gerais - MG\nRegião: Sul de Minas\nVariedade: Mundo Novo\nProcesso: Anaeróbico 72h\nNotas: Frutas vermelhas, maple e baunilha.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 46.8}, {\"peso\": \"1 kg\", \"preco\": 148.2}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 6},
+  {"id": "giuseppe", "nome": "Giuseppe", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Giuseppe Verde de Oliveira | Faz. Santo Antônio\nCidade: Ibiraci - MG\nRegião: Alta Mogiana\nVariedade: Paraíso MG 2\nProcesso: Natural\nNotas: Floral, maçã Fuji e canela.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 49.8}, {\"peso\": \"1 kg\", \"preco\": 151.5}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 7},
+  {"id": "sonia", "nome": "Sônia", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Sônia da Graça Corrêa de Carvalho | Faz. Furtado\nCidade: Cajuru - SP\nRegião: Alta Mogiana\nVariedade: Catuaí 62\nProcesso: Natural\nNotas: Pamonha, frutas amarelas e chá de flores brancas.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 52.5}, {\"peso\": \"1 kg\", \"preco\": 154.5}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 8},
+  {"id": "lagoinha", "nome": "Lagoinha", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Matheus e Kadu | Fazenda Lagoinha\nCidade: Carmo da Cachoeira - MG\nRegião: Mantiqueira\nVariedade: Obatã\nProcesso: Fermentação anaeróbica 120h\nNotas: Frutas roxas, framboesa e morango.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 57.8}, {\"peso\": \"1 kg\", \"preco\": 168.8}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 9},
+  {"id": "nadia", "nome": "Nadia", "torrefacao": "Sabino Torrefação", "descricao": "Produtor: Nadia Felícia da Mata | Morro Vermelho\nCidade: Camacho - MG\nRegião: Campo das Vertentes\nVariedade: Catucaí 785/15\nProcesso: Maceração carbônica\nNotas: Xarope de guaraná, maçã verde e vinhoso.", "tamanhos": "[{\"peso\": \"250 g\", \"preco\": 76.8}, {\"peso\": \"1 kg\", \"preco\": 246.8}]", "moagens": "Em grãos, Moído", "frete": 2, "ativo": "sim", "ordem": 10},
+  {"id": "filtro-v60", "nome": "Filtro V60 Hario 02", "torrefacao": "Acessório", "descricao": "Pacote com 100 unidades.", "tamanhos": "[{\"peso\": \"Pacote c/ 100\", \"preco\": 42.8}]", "moagens": "", "frete": 2, "ativo": "sim", "ordem": 11},
+  {"id": "kit-v60", "nome": "Kit Hario V60", "torrefacao": "Acessório", "descricao": "", "tamanhos": "[{\"peso\": \"Kit\", \"preco\": 179.25}]", "moagens": "", "frete": 2, "ativo": "sim", "ordem": 12}
 ];
 
 function aba_(nome) {

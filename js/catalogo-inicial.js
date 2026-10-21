@@ -16,6 +16,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 0,
     "ativo": true,
     "ordem": 1
   },
@@ -38,6 +39,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 2
   },
@@ -60,6 +62,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 3
   },
@@ -82,6 +85,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 4
   },
@@ -104,6 +108,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 5
   },
@@ -126,6 +131,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 6
   },
@@ -148,6 +154,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 7
   },
@@ -170,6 +177,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 8
   },
@@ -192,6 +200,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 9
   },
@@ -214,6 +223,7 @@ window.CATALOGO_INICIAL = [
       "Em grãos",
       "Moído"
     ],
+    "frete": 2,
     "ativo": true,
     "ordem": 10
   },
@@ -229,6 +239,7 @@ window.CATALOGO_INICIAL = [
       }
     ],
     "moagens": [],
+    "frete": 2,
     "ativo": true,
     "ordem": 11
   },
@@ -244,6 +255,7 @@ window.CATALOGO_INICIAL = [
       }
     ],
     "moagens": [],
+    "frete": 2,
     "ativo": true,
     "ordem": 12
   }

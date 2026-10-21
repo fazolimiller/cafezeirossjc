@@ -53,6 +53,10 @@
       $('aviso').textContent = config.aviso;
       $('aviso').classList.remove('oculto');
     }
+    if (/^https?:\/\//.test(config.linkGrupo || '')) {
+      $('link-grupo').href = config.linkGrupo;
+      $('grupo').classList.remove('oculto');
+    }
     if (!aberto()) {
       $('enviar').disabled = true;
       $('enviar').textContent = 'Encomendas fechadas';
@@ -115,7 +119,33 @@
     $('carrinho-itens').innerHTML = itens.map(i =>
       `<li><span>${i.quantidade}× ${Util.esc(i.cafe.nome)}<br><small class="suave">${Util.esc([i.peso, i.moagem].filter(Boolean).join(' · '))}</small></span><span>${Util.moeda(i.preco * i.quantidade)}</span></li>`).join('');
     $('carrinho-vazio').classList.toggle('oculto', itens.length > 0);
-    $('carrinho-total').textContent = Util.moeda(itens.reduce((s, i) => s + i.preco * i.quantidade, 0));
+    // Prévia; o valor oficial é recalculado no servidor com o catálogo.
+    const t = totais(itens);
+    $('carrinho-taxas').classList.toggle('oculto', !itens.length);
+    $('carrinho-taxas').innerHTML = linhasTotais(t).map(([rotulo, valor]) =>
+      `<div><dt>${rotulo}</dt><dd>${Util.moeda(valor)}</dd></div>`).join('');
+    $('carrinho-total').textContent = Util.moeda(t.total);
+  }
+
+  function percentualTaxa() {
+    return Number(String(config.taxaAdmin || 0).replace(',', '.')) || 0;
+  }
+
+  function totais(itens) {
+    const c = v => Math.round(v * 100) / 100;
+    const subtotal = c(itens.reduce((s, i) => s + i.preco * i.quantidade, 0));
+    const frete = c(itens.reduce((s, i) => s + (i.cafe.frete || 0) * i.quantidade, 0));
+    const taxa = c(subtotal * percentualTaxa() / 100);
+    return { subtotal, taxa, frete, total: c(subtotal + taxa + frete) };
+  }
+
+  function linhasTotais(t) {
+    const pct = percentualTaxa().toLocaleString('pt-BR');
+    return [
+      ['Produtos', t.subtotal],
+      [`Taxa de administração (${pct}%)`, t.taxa],
+      ['Frete', t.frete]
+    ].filter(([, v], i) => i === 0 || v > 0);
   }
 
   $('telefone').addEventListener('input', e => {
@@ -162,7 +192,10 @@
     $('conf-itens').innerHTML = pedido.itens.map(i => `
       <tr><td>${Util.esc(i.cafe)}<br><small class="suave">${Util.esc([i.peso, i.moagem].filter(Boolean).join(' · '))}</small></td><td class="num">${i.quantidade}</td>
       <td class="num">${Util.moeda(i.preco)}</td><td class="num">${Util.moeda(i.subtotal)}</td></tr>`).join('');
-    $('conf-total').textContent = Util.moeda(pedido.total);
+    const subtotal = pedido.subtotal === undefined ? pedido.total : pedido.subtotal;
+    $('conf-rodape').innerHTML = linhasTotais({ subtotal, taxa: pedido.taxa || 0, frete: pedido.frete || 0 })
+      .map(([rotulo, valor]) => `<tr class="rodape-parcial"><td colspan="3">${rotulo}</td><td class="num">${Util.moeda(valor)}</td></tr>`).join('') +
+      `<tr><td colspan="3">Total</td><td class="num">${Util.moeda(pedido.total)}</td></tr>`;
     $('pix-valor').textContent = Util.moeda(pedido.total);
 
     const temChave = !!(config.pixChave || '').trim();

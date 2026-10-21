@@ -55,6 +55,10 @@
       </div>
 
       <div id="aviso" class="aviso oculto"></div>
+      <div id="grupo" class="aviso aviso--grupo oculto">
+        <span>Só faça o pedido se estiver no <strong>grupo do WhatsApp</strong> dos Cafezeiros SJC. Ainda não está?</span>
+        <a id="link-grupo" class="botao botao--peq" target="_blank" rel="noopener">Entrar no grupo</a>
+      </div>
 
       <div class="loja">
         <div>
@@ -69,6 +73,7 @@
           <h2 id="titulo-carrinho">Seu pedido</h2>
           <ul id="carrinho-itens" class="carrinho__itens"></ul>
           <p id="carrinho-vazio" class="carrinho__vazio">Nenhum café escolhido ainda.</p>
+          <dl id="carrinho-taxas" class="carrinho__taxas oculto"></dl>
           <div class="carrinho__total"><span>Total</span><strong id="carrinho-total">R$ 0,00</strong></div>
 
           <form id="form-pedido" novalidate>
@@ -104,7 +109,7 @@
               <table>
                 <thead><tr><th>Café</th><th class="num">Qtd</th><th class="num">Preço</th><th class="num">Subtotal</th></tr></thead>
                 <tbody id="conf-itens"></tbody>
-                <tfoot><tr><td colspan="3">Total</td><td class="num" id="conf-total"></td></tr></tfoot>
+                <tfoot id="conf-rodape"></tfoot>
               </table>
             </div>
             <p id="conf-nome" style="color:var(--texto-suave);font-size:.92rem"></p>

@@ -137,6 +137,11 @@
             <div class="campo"><label for="cfg-pixcidade">Cidade do recebedor</label><input id="cfg-pixcidade" name="pixCidade" maxlength="15"></div>
             <div class="campo"><label for="cfg-whats">WhatsApp da organização (para comprovantes)</label><input id="cfg-whats" name="whatsapp" type="tel" placeholder="12999998888"></div>
           </fieldset>
+          <fieldset>
+            <legend>Taxas e grupo</legend>
+            <div class="campo"><label for="cfg-taxa">Taxa de administração (%)</label><input id="cfg-taxa" name="taxaAdmin" type="number" step="0.1" min="0" inputmode="decimal"><small>Cobrada sobre o valor dos produtos. O frete é definido por produto em “Cafés e preços”.</small></div>
+            <div class="campo"><label for="cfg-grupo">Link do grupo do WhatsApp</label><input id="cfg-grupo" name="linkGrupo" type="url" placeholder="https://chat.whatsapp.com/…"><small>Aparece no site para quem ainda não está no grupo.</small></div>
+          </fieldset>
           <button class="botao" type="submit">Salvar configurações</button>
         </form>
       </div>

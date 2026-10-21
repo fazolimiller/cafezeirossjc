@@ -21,7 +21,7 @@ const Api = (() => {
 
   /* ---------- Modo demonstração ---------- */
 
-  const CHAVE = 'cafezeiros-demo-v3';
+  const CHAVE = 'cafezeiros-demo-v4';
   const SENHA_DEMO = 'cafe';
 
   function carregar() {
@@ -32,7 +32,8 @@ const Api = (() => {
     return {
       config: {
         rodada: Util.rodadaPadrao(), pedidosAbertos: 'sim', prazo: '', pixChave: '',
-        pixNome: 'CAFEZEIROS SJC', pixCidade: 'SAO JOSE DOS CAMPOS', whatsapp: '', aviso: ''
+        pixNome: 'MILLER FAZOLI LAMBERT', pixCidade: 'SAO JOSE DOS CAMPOS', whatsapp: '', linkGrupo: '', taxaAdmin: '5',
+        aviso: 'Preencha uma só vez por pessoa. Atenção aos nomes, às quantidades e se o café é em grãos ou moído.'
       },
       cafes: JSON.parse(JSON.stringify(window.CATALOGO_INICIAL || [])),
       pedidos: []
@@ -47,6 +48,13 @@ const Api = (() => {
 
   function exigirAdmin(p) {
     if (p.senha !== SENHA_DEMO) throw new Error('Senha incorreta. (No modo demonstração a senha é "cafe".)');
+  }
+
+  function calcularTotais(itens, taxaAdmin) {
+    const subtotal = centavos(itens.reduce((s, i) => s + i.subtotal, 0));
+    const frete = centavos(itens.reduce((s, i) => s + i.frete, 0));
+    const taxa = centavos(subtotal * (Number(String(taxaAdmin).replace(',', '.')) || 0) / 100);
+    return { subtotal, taxa, frete, total: centavos(subtotal + taxa + frete) };
   }
 
   const acoesDemo = {
@@ -70,15 +78,20 @@ const Api = (() => {
         if (cafe.moagens.length && !cafe.moagens.includes(moagem)) throw new Error(`Moagem indisponível para ${cafe.nome}.`);
         itens.push({
           cafeId: cafe.id, cafe: cafe.nome, peso: tamanho.peso, moagem,
-          preco: tamanho.preco, quantidade: qtd, subtotal: centavos(tamanho.preco * qtd)
+          preco: tamanho.preco, quantidade: qtd, subtotal: centavos(tamanho.preco * qtd),
+          frete: centavos((cafe.frete || 0) * qtd)
         });
       });
       if (!itens.length) throw new Error('Escolha pelo menos um café.');
+      const rodada = db.config.rodada || Util.rodadaPadrao();
+      const anterior = db.pedidos.find(x => x.telefone === telefone && x.rodada === rodada && x.status !== 'cancelado');
+      if (anterior) throw new Error(`Já existe um pedido seu nesta rodada (nº ${anterior.id}). Para alterar, fale com a organização.`);
+      const totais = calcularTotais(itens, db.config.taxaAdmin);
       const agora = new Date();
       const pedido = {
         id: 'CF' + agora.toISOString().slice(2, 10).replace(/-/g, '') + Math.random().toString(36).slice(2, 6).toUpperCase(),
-        criadoEm: agora.toISOString(), rodada: db.config.rodada || Util.rodadaPadrao(agora),
-        nome, telefone, itens, total: centavos(itens.reduce((s, i) => s + i.subtotal, 0)),
+        criadoEm: agora.toISOString(), rodada,
+        nome, telefone, itens, ...totais,
         status: 'aguardando', valorPago: '', pagoEm: '', observacoes: String(p.observacoes || '').slice(0, 500),
         atualizadoEm: agora.toISOString()
       };
@@ -111,6 +124,7 @@ const Api = (() => {
       exigirAdmin(p);
       db.cafes = (p.cafes || []).filter(c => c.nome).map((c, i) => ({
         ...c, id: c.id || Math.random().toString(36).slice(2, 10), ativo: !!c.ativo, ordem: i + 1,
+        frete: centavos(Math.max(0, Number(c.frete) || 0)),
         tamanhos: (c.tamanhos || []).map(t => ({ peso: String(t.peso).trim(), preco: centavos(Number(t.preco) || 0) }))
           .filter(t => t.peso && t.preco > 0),
         moagens: (c.moagens || []).filter(Boolean)
