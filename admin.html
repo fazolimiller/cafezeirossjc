@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Painel · Cafezeiros SJC</title>
+  <meta name="theme-color" content="#1e3a2b">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="container topo__barra">
+      <a class="marca" href="./">
+        <img class="marca__logo" src="assets/logo.svg" alt="">
+        <span><span class="marca__nome">Cafezeiros SJC</span><span class="marca__local">Painel da organização</span></span>
+      </a>
+      <span>
+        <a class="topo__link" href="./">Ver site</a>
+        <button id="sair" class="topo__link link-botao oculto" type="button">Sair</button>
+      </span>
+    </div>
+  </header>
+  <div id="faixa-demo" class="faixa-demo oculto">Modo demonstração — dados só neste navegador. Senha: <strong>cafe</strong></div>
+
+  <main class="container">
+    <!-- Login -->
+    <section id="tela-login" class="secao">
+      <form id="form-login" class="login">
+        <h1>Entrar no painel</h1>
+        <div class="campo">
+          <label for="senha">Senha</label>
+          <input id="senha" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="botao botao--largo" type="submit">Entrar</button>
+        <p id="erro-login" class="erro" role="alert"></p>
+      </form>
+    </section>
+
+    <!-- Painel -->
+    <section id="tela-painel" class="secao oculto">
+      <div class="abas nao-imprimir" role="tablist">
+        <button role="tab" data-aba="pedidos" aria-selected="true">Pedidos</button>
+        <button role="tab" data-aba="relatorios" aria-selected="false">Relatórios</button>
+        <button role="tab" data-aba="cafes" aria-selected="false">Cafés e preços</button>
+        <button role="tab" data-aba="config" aria-selected="false">Configurações</button>
+        <button id="recarregar" class="botao botao--sec botao--peq" type="button" title="Buscar dados atualizados">↻ Atualizar</button>
+      </div>
+
+      <!-- Pedidos -->
+      <div id="aba-pedidos" class="aba" role="tabpanel">
+        <div class="filtros nao-imprimir">
+          <div class="campo"><label for="ped-rodada">Rodada</label><select id="ped-rodada"></select></div>
+          <div class="campo"><label for="ped-status">Status</label>
+            <select id="ped-status">
+              <option value="">Todos</option>
+              <option value="pendentes">Pendentes (aguardando + informado)</option>
+              <option value="aguardando">Aguardando PIX</option>
+              <option value="informado">PIX informado</option>
+              <option value="confirmado">Pago (confirmado)</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="campo"><label for="ped-busca">Buscar</label><input id="ped-busca" type="search" placeholder="Nome, telefone ou nº"></div>
+          <div class="campo campo--acoes"><button id="ped-csv" class="botao botao--sec" type="button">Exportar CSV</button></div>
+        </div>
+        <div id="ped-resumo" class="cartoes"></div>
+        <div class="tabela-wrap">
+          <table>
+            <thead><tr><th>Nº / data</th><th>Cliente</th><th>Itens</th><th class="num">Total</th><th>Status</th><th class="num">Valor recebido</th><th></th></tr></thead>
+            <tbody id="ped-lista"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Relatórios -->
+      <div id="aba-relatorios" class="aba oculto" role="tabpanel">
+        <div class="filtros nao-imprimir">
+          <div class="campo"><label for="rel-modo">Período por</label>
+            <select id="rel-modo">
+              <option value="rodada">Rodada (mês da encomenda)</option>
+              <option value="datas">Intervalo de datas</option>
+            </select>
+          </div>
+          <div class="campo" id="rel-campo-rodada"><label for="rel-rodada">Rodada</label><select id="rel-rodada"></select></div>
+          <div class="campo oculto" id="rel-campo-de"><label for="rel-de">De</label><input id="rel-de" type="date"></div>
+          <div class="campo oculto" id="rel-campo-ate"><label for="rel-ate">Até</label><input id="rel-ate" type="date"></div>
+          <div class="campo"><label for="rel-status">Considerar</label>
+            <select id="rel-status">
+              <option value="validos">Todos os pedidos (exceto cancelados)</option>
+              <option value="confirmado">Somente pagos (confirmados)</option>
+              <option value="pendentes">Somente pendentes de pagamento</option>
+            </select>
+          </div>
+          <div class="campo campo--acoes"><button id="rel-imprimir" class="botao" type="button">Imprimir / PDF</button></div>
+        </div>
+        <div class="atalhos nao-imprimir" id="rel-atalhos">
+          <button type="button" data-atalho="mes">Mês atual</button>
+          <button type="button" data-atalho="mes-anterior">Mês anterior</button>
+          <button type="button" data-atalho="3meses">Últimos 3 meses</button>
+          <button type="button" data-atalho="ano">Este ano</button>
+          <button type="button" data-atalho="tudo">Tudo</button>
+        </div>
+        <div id="relatorio"></div>
+      </div>
+
+      <!-- Cafés -->
+      <div id="aba-cafes" class="aba oculto" role="tabpanel">
+        <p class="dica">Os preços valem para os <strong>novos</strong> pedidos. Pedidos já feitos guardam o preço do momento da compra. Desmarque “Ativo” para tirar um café do site sem apagar.</p>
+        <div id="lista-cafes" class="lista-cafes"></div>
+        <div class="acoes-linha">
+          <button id="add-cafe" class="botao botao--sec" type="button">+ Adicionar café</button>
+          <button id="salvar-cafes" class="botao" type="button">Salvar cafés</button>
+        </div>
+      </div>
+
+      <!-- Configurações -->
+      <div id="aba-config" class="aba oculto" role="tabpanel">
+        <form id="form-config" class="form-config">
+          <fieldset>
+            <legend>Rodada do mês</legend>
+            <div class="campo"><label for="cfg-rodada">Nome da rodada</label><input id="cfg-rodada" name="rodada" placeholder="Novembro/2026"><small>Todos os novos pedidos são marcados com esta rodada. Troque no início de cada mês.</small></div>
+            <div class="campo campo--check"><input id="cfg-abertos" name="pedidosAbertos" type="checkbox"><label for="cfg-abertos">Encomendas abertas</label></div>
+            <div class="campo"><label for="cfg-prazo">Prazo (texto livre)</label><input id="cfg-prazo" name="prazo" placeholder="sexta, 15/11, às 20h"></div>
+            <div class="campo"><label for="cfg-aviso">Aviso no topo do site</label><textarea id="cfg-aviso" name="aviso" placeholder="Ex.: retirada no sábado, 23/11, no ponto de encontro de sempre."></textarea></div>
+          </fieldset>
+          <fieldset>
+            <legend>PIX</legend>
+            <div class="campo"><label for="cfg-pix">Chave PIX</label><input id="cfg-pix" name="pixChave"><small>Telefone: use +55 e DDD (ex.: +5512999998888). CPF/CNPJ: só números. E-mail ou chave aleatória: como está no banco.</small></div>
+            <div class="campo"><label for="cfg-pixnome">Nome do recebedor</label><input id="cfg-pixnome" name="pixNome" maxlength="25"></div>
+            <div class="campo"><label for="cfg-pixcidade">Cidade do recebedor</label><input id="cfg-pixcidade" name="pixCidade" maxlength="15"></div>
+            <div class="campo"><label for="cfg-whats">WhatsApp da organização (para comprovantes)</label><input id="cfg-whats" name="whatsapp" type="tel" placeholder="12999998888"></div>
+          </fieldset>
+          <button class="botao" type="submit">Salvar configurações</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
