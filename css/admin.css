@@ -38,11 +38,19 @@
 
 .dica { background: var(--creme-2); padding: 10px 14px; border-radius: 8px; font-size: .92rem; }
 .lista-cafes { display: grid; gap: 12px; margin: 16px 0; }
-.item-cafe { background: var(--branco); border: 1px solid var(--borda); border-radius: 12px; padding: 14px; display: grid; grid-template-columns: 2fr 1.4fr 1fr 1fr auto; gap: 10px; align-items: end; }
+.item-cafe { background: var(--branco); border: 1px solid var(--borda); border-radius: 12px; padding: 14px; display: grid; grid-template-columns: 2fr 1.4fr auto; gap: 12px 14px; align-items: start; }
 .item-cafe .campo { margin: 0; }
-.item-cafe .campo--desc { grid-column: 1 / 5; }
-.item-cafe__acoes { display: flex; gap: 6px; align-items: center; }
+.item-cafe .campo--desc { grid-column: 1 / -1; }
+.item-cafe__acoes { display: flex; gap: 6px; align-items: center; padding-top: 24px; }
+.item-cafe__ordem { align-self: end; }
 .item-cafe--inativo { opacity: .65; }
+.check { display: flex; gap: 8px; align-items: center; font-size: .94rem; padding: 4px 0; cursor: pointer; }
+.campo .check { text-transform: none; letter-spacing: 0; color: var(--texto); }
+.check input { width: 18px; height: 18px; accent-color: var(--verde); }
+.tamanhos { display: grid; gap: 6px; }
+.tamanho { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; }
+.tamanho .entrada { padding: 8px 10px; }
+.link-acao { background: none; border: 0; padding: 4px 0; color: var(--verde-2); cursor: pointer; text-align: left; font-weight: 500; }
 .acoes-linha { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .form-config { max-width: 640px; }
@@ -50,8 +58,8 @@
 .form-config legend { padding: 0 8px; color: var(--verde); font-weight: 500; }
 
 @media (max-width: 760px) {
-  .item-cafe { grid-template-columns: 1fr 1fr; }
-  .item-cafe .campo--desc, .item-cafe .campo--nome { grid-column: 1 / -1; }
+  .item-cafe { grid-template-columns: 1fr; }
+  .item-cafe__acoes { padding-top: 0; }
 }
 
 @media print {

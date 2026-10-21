@@ -18,12 +18,16 @@ senha do painel é `cafe`. Serve para testar antes de publicar.
   (avisa se for diferente do total), link direto para o WhatsApp da pessoa, exportação CSV.
 - **Relatórios**: escolha uma rodada ou um intervalo de datas (atalhos: mês atual, mês anterior,
   últimos 3 meses, ano, tudo) e veja:
-  - total por café (quantidade e valor — é a lista para passar ao torrador);
+  - total por café × tamanho × moagem (quantidade, peso total em kg e valor — é a lista
+    para passar ao torrador);
   - total por rodada, quando o período tem mais de um mês;
   - pedidos e pagamentos, com total previsto, recebido e a receber.
   Tudo pode ser exportado em CSV (abre no Excel) ou impresso/salvo em PDF.
-- **Cafés e preços**: cadastro, ordem, ativar/desativar. Cada pedido guarda o preço do
-  momento da compra, então mudar o preço não altera pedidos antigos.
+- **Cafés e preços**: cadastro, ordem, ativar/desativar. Cada café tem seus **tamanhos com
+  preço próprio** (novos cafés já vêm com 250 g e 1 kg; dá para remover um tamanho ou criar
+  outro, como 500 g) e as **moagens disponíveis** (Em grãos e/ou Moído). Na página de
+  encomenda, cada combinação de tamanho e moagem tem sua própria quantidade. Cada pedido
+  guarda o preço do momento da compra, então mudar o preço não altera pedidos antigos.
 - **Configurações**: nome da rodada, abrir/fechar encomendas, prazo, aviso, chave PIX e
   WhatsApp da organização (para receber comprovantes).
 

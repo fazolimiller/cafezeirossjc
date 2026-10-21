@@ -80,6 +80,22 @@
     return p.status === 'confirmado' ? p.total : 0;
   }
 
+  function descItem(i) {
+    return [i.cafe, i.peso, i.moagem].filter(Boolean).join(' · ');
+  }
+
+  // "250 g" → 0.25; "1 kg" → 1; "1,5kg" → 1.5. Peso não reconhecido → null.
+  function emKg(peso) {
+    const m = String(peso || '').match(/([\d.,]+)\s*(kg|g)\b/i);
+    if (!m) return null;
+    const n = Number(m[1].replace(',', '.'));
+    return m[2].toLowerCase() === 'kg' ? n : n / 1000;
+  }
+
+  function kg(v) {
+    return v.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) + ' kg';
+  }
+
   function diaLocal(v) {
     return new Date(v).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
   }
@@ -167,7 +183,7 @@
       <tr data-id="${Util.esc(p.id)}" class="${p.status === 'cancelado' ? 'linha--cancelado' : ''}">
         <td><span class="ped-id">${Util.esc(p.id)}</span><br><span class="suave">${Util.data(p.criadoEm, true)}</span>${rodada === '*' ? `<br><span class="suave">${Util.esc(p.rodada)}</span>` : ''}</td>
         <td>${Util.esc(p.nome)}<br><a class="suave" href="${Util.whatsappLink(p.telefone)}" target="_blank" rel="noopener">${Util.telefone(p.telefone)}</a>${p.observacoes ? `<br><span class="suave">“${Util.esc(p.observacoes)}”</span>` : ''}</td>
-        <td><ul class="ped-itens">${p.itens.map(i => `<li>${i.quantidade}× ${Util.esc(i.cafe)} <span class="suave">(${Util.moeda(i.preco)})</span></li>`).join('')}</ul></td>
+        <td><ul class="ped-itens">${p.itens.map(i => `<li>${i.quantidade}× ${Util.esc(descItem(i))} <span class="suave">(${Util.moeda(i.preco)})</span></li>`).join('')}</ul></td>
         <td class="num">${Util.moeda(p.total)}</td>
         <td>
           <select class="select-mini" data-campo="status" aria-label="Status do pedido">
@@ -224,7 +240,7 @@
     const linhas = [['Pedido', 'Data', 'Rodada', 'Nome', 'Telefone', 'Itens', 'Total', 'Status', 'Valor recebido', 'Pago em', 'Observações']];
     pedidosFiltrados().forEach(p => linhas.push([
       p.id, Util.data(p.criadoEm, true), p.rodada, p.nome, Util.telefone(p.telefone),
-      p.itens.map(i => `${i.quantidade}x ${i.cafe}`).join(' | '), p.total, Util.STATUS[p.status] || p.status,
+      p.itens.map(i => `${i.quantidade}x ${descItem(i)}`).join(' | '), p.total, Util.STATUS[p.status] || p.status,
       recebido(p), Util.data(p.pagoEm), p.observacoes || ''
     ]));
     Util.baixar(`pedidos-${nomeArquivo($('ped-rodada').value === '*' ? 'todas' : $('ped-rodada').value)}.csv`, Util.csv(linhas));
@@ -295,17 +311,19 @@
     return { lista: filtrarStatus(lista, $('rel-status').value), titulo };
   }
 
-  // Agrupa por café + preço (se o preço mudou no período, aparecem linhas separadas).
+  // Agrupa por café + tamanho + moagem + preço (se o preço mudou no período, aparecem linhas separadas).
   function porCafe(lista) {
     const grupos = {};
     lista.forEach(p => p.itens.forEach(i => {
-      const k = i.cafe + '|' + i.preco;
-      grupos[k] = grupos[k] || { cafe: i.cafe, preco: i.preco, quantidade: 0, total: 0, pedidos: new Set() };
+      const k = [i.cafe, i.peso, i.moagem, i.preco].join('|');
+      grupos[k] = grupos[k] || { cafe: i.cafe, peso: i.peso || '', moagem: i.moagem || '', preco: i.preco, quantidade: 0, total: 0, kg: 0, pedidos: new Set() };
       grupos[k].quantidade += i.quantidade;
       grupos[k].total += i.subtotal;
+      grupos[k].kg += (emKg(i.peso) || 0) * i.quantidade;
       grupos[k].pedidos.add(p.id);
     }));
-    return Object.values(grupos).sort((a, b) => a.cafe.localeCompare(b.cafe, 'pt-BR') || a.preco - b.preco);
+    return Object.values(grupos).sort((a, b) => a.cafe.localeCompare(b.cafe, 'pt-BR') ||
+      (emKg(a.peso) || 0) - (emKg(b.peso) || 0) || a.moagem.localeCompare(b.moagem, 'pt-BR') || a.preco - b.preco);
   }
 
   function porRodada(lista) {
@@ -333,6 +351,7 @@
 
     const totalQtd = cafes.reduce((s, c) => s + c.quantidade, 0);
     const totalValor = cafes.reduce((s, c) => s + c.total, 0);
+    const totalKg = cafes.reduce((s, c) => s + c.kg, 0);
 
     $('relatorio').innerHTML = `
       <div class="relatorio-cabecalho">
@@ -344,9 +363,9 @@
       <div class="relatorio-bloco">
         <h2>Total por café <button class="botao botao--sec botao--peq" data-csv="cafes" type="button">CSV</button></h2>
         <div class="tabela-wrap"><table>
-          <thead><tr><th>Café</th><th class="num">Preço unit.</th><th class="num">Pedidos</th><th class="num">Quantidade</th><th class="num">Total</th></tr></thead>
-          <tbody>${cafes.map(c => `<tr><td>${Util.esc(c.cafe)}</td><td class="num">${Util.moeda(c.preco)}</td><td class="num">${c.pedidos.size}</td><td class="num">${c.quantidade}</td><td class="num">${Util.moeda(c.total)}</td></tr>`).join('') || '<tr><td colspan="5" class="carregando">Sem pedidos no período.</td></tr>'}</tbody>
-          <tfoot><tr><td colspan="3">Total</td><td class="num">${totalQtd}</td><td class="num">${Util.moeda(totalValor)}</td></tr></tfoot>
+          <thead><tr><th>Café</th><th>Tamanho</th><th>Moagem</th><th class="num">Preço unit.</th><th class="num">Pedidos</th><th class="num">Quantidade</th><th class="num">Peso total</th><th class="num">Total</th></tr></thead>
+          <tbody>${cafes.map(c => `<tr><td>${Util.esc(c.cafe)}</td><td>${Util.esc(c.peso)}</td><td>${Util.esc(c.moagem)}</td><td class="num">${Util.moeda(c.preco)}</td><td class="num">${c.pedidos.size}</td><td class="num">${c.quantidade}</td><td class="num">${c.kg ? kg(c.kg) : '—'}</td><td class="num">${Util.moeda(c.total)}</td></tr>`).join('') || '<tr><td colspan="8" class="carregando">Sem pedidos no período.</td></tr>'}</tbody>
+          <tfoot><tr><td colspan="5">Total</td><td class="num">${totalQtd}</td><td class="num">${kg(totalKg)}</td><td class="num">${Util.moeda(totalValor)}</td></tr></tfoot>
         </table></div>
       </div>
 
@@ -364,7 +383,7 @@
         <h2>Pedidos e pagamentos <button class="botao botao--sec botao--peq" data-csv="pedidos" type="button">CSV</button></h2>
         <div class="tabela-wrap"><table>
           <thead><tr><th>Pedido</th><th>Nome</th><th>Itens</th><th class="num">Total</th><th>Status</th><th class="num">Recebido</th></tr></thead>
-          <tbody>${lista.map(p => `<tr class="${p.status === 'cancelado' ? 'linha--cancelado' : ''}"><td><span class="ped-id">${Util.esc(p.id)}</span><br><span class="suave">${Util.data(p.criadoEm)}</span></td><td>${Util.esc(p.nome)}<br><span class="suave">${Util.telefone(p.telefone)}</span></td><td><ul class="ped-itens">${p.itens.map(i => `<li>${i.quantidade}× ${Util.esc(i.cafe)}</li>`).join('')}</ul></td><td class="num">${Util.moeda(p.total)}</td><td><span class="selo selo--${p.status}">${Util.STATUS[p.status] || p.status}</span></td><td class="num">${Util.moeda(recebido(p))}</td></tr>`).join('') || '<tr><td colspan="6" class="carregando">Sem pedidos no período.</td></tr>'}</tbody>
+          <tbody>${lista.map(p => `<tr class="${p.status === 'cancelado' ? 'linha--cancelado' : ''}"><td><span class="ped-id">${Util.esc(p.id)}</span><br><span class="suave">${Util.data(p.criadoEm)}</span></td><td>${Util.esc(p.nome)}<br><span class="suave">${Util.telefone(p.telefone)}</span></td><td><ul class="ped-itens">${p.itens.map(i => `<li>${i.quantidade}× ${Util.esc(descItem(i))}</li>`).join('')}</ul></td><td class="num">${Util.moeda(p.total)}</td><td><span class="selo selo--${p.status}">${Util.STATUS[p.status] || p.status}</span></td><td class="num">${Util.moeda(recebido(p))}</td></tr>`).join('') || '<tr><td colspan="6" class="carregando">Sem pedidos no período.</td></tr>'}</tbody>
           <tfoot><tr><td colspan="3">Total</td><td class="num">${Util.moeda(lista.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.total, 0))}</td><td></td><td class="num">${Util.moeda(r.recebido)}</td></tr></tfoot>
         </table></div>
       </div>`;
@@ -376,9 +395,10 @@
     const { lista, titulo, cafes, rods } = ultimoRelatorio;
     const nome = nomeArquivo(titulo);
     if (b.dataset.csv === 'cafes') {
-      const linhas = [['Café', 'Preço unitário', 'Pedidos', 'Quantidade', 'Total']];
-      cafes.forEach(c => linhas.push([c.cafe, c.preco, c.pedidos.size, c.quantidade, c.total]));
-      linhas.push(['TOTAL', '', '', cafes.reduce((s, c) => s + c.quantidade, 0), cafes.reduce((s, c) => s + c.total, 0)]);
+      const linhas = [['Café', 'Tamanho', 'Moagem', 'Preço unitário', 'Pedidos', 'Quantidade', 'Peso total (kg)', 'Total']];
+      cafes.forEach(c => linhas.push([c.cafe, c.peso, c.moagem, c.preco, c.pedidos.size, c.quantidade, c.kg, c.total]));
+      linhas.push(['TOTAL', '', '', '', '', cafes.reduce((s, c) => s + c.quantidade, 0),
+        cafes.reduce((s, c) => s + c.kg, 0), cafes.reduce((s, c) => s + c.total, 0)]);
       Util.baixar(`cafes-${nome}.csv`, Util.csv(linhas));
     }
     if (b.dataset.csv === 'rodadas') {
@@ -387,10 +407,10 @@
       Util.baixar(`rodadas-${nome}.csv`, Util.csv(linhas));
     }
     if (b.dataset.csv === 'pedidos') {
-      const linhas = [['Pedido', 'Data', 'Rodada', 'Nome', 'Telefone', 'Café', 'Preço', 'Quantidade', 'Subtotal', 'Status', 'Valor recebido do pedido']];
+      const linhas = [['Pedido', 'Data', 'Rodada', 'Nome', 'Telefone', 'Café', 'Tamanho', 'Moagem', 'Preço', 'Quantidade', 'Subtotal', 'Status', 'Valor recebido do pedido']];
       lista.forEach(p => p.itens.forEach((i, n) => linhas.push([
         p.id, Util.data(p.criadoEm, true), p.rodada, p.nome, Util.telefone(p.telefone),
-        i.cafe, i.preco, i.quantidade, i.subtotal, Util.STATUS[p.status] || p.status, n === 0 ? recebido(p) : ''
+        i.cafe, i.peso || '', i.moagem || '', i.preco, i.quantidade, i.subtotal, Util.STATUS[p.status] || p.status, n === 0 ? recebido(p) : ''
       ])));
       Util.baixar(`pedidos-${nome}.csv`, Util.csv(linhas));
     }
@@ -402,19 +422,31 @@
     $('lista-cafes').innerHTML = dados.cafes.map(linhaCafe).join('') || '<p class="suave">Nenhum café cadastrado.</p>';
   }
 
+  const MOAGENS = ['Em grãos', 'Moído'];
+
   function linhaCafe(c) {
     const v = k => Util.esc(c[k] === undefined ? '' : c[k]);
+    const extras = (c.moagens || []).filter(m => !MOAGENS.includes(m));
     return `
       <div class="item-cafe ${c.ativo ? '' : 'item-cafe--inativo'}" data-id="${v('id')}">
         <div class="campo campo--nome"><label>Nome</label><input data-k="nome" value="${v('nome')}" placeholder="Nome do café"></div>
         <div class="campo"><label>Torrefação</label><input data-k="torrefacao" value="${v('torrefacao')}"></div>
-        <div class="campo"><label>Peso</label><input data-k="peso" value="${v('peso')}" placeholder="250 g"></div>
-        <div class="campo"><label>Preço (R$)</label><input data-k="preco" type="number" step="0.01" min="0" inputmode="decimal" value="${v('preco')}"></div>
         <div class="item-cafe__acoes">
-          <label class="campo--check" style="display:flex;gap:6px;align-items:center"><input data-k="ativo" type="checkbox" ${c.ativo ? 'checked' : ''}> Ativo</label>
+          <label class="check"><input data-k="ativo" type="checkbox" ${c.ativo ? 'checked' : ''}> Ativo</label>
         </div>
-        <div class="campo campo--desc"><label>Descrição</label><input data-k="descricao" value="${v('descricao')}" placeholder="Notas, origem, processo, moagem…"></div>
-        <div class="item-cafe__acoes">
+        <div class="campo campo--desc"><label>Descrição</label><input data-k="descricao" value="${v('descricao')}" placeholder="Notas, origem, processo…"></div>
+        <div class="campo">
+          <span class="rotulo">Tamanhos e preços</span>
+          <div class="tamanhos">
+            ${(c.tamanhos || []).map(linhaTamanho).join('')}
+          </div>
+          <button class="link-acao" data-add-tamanho type="button">+ tamanho</button>
+        </div>
+        <div class="campo">
+          <span class="rotulo">Moagens disponíveis</span>
+          ${MOAGENS.concat(extras).map(m => `<label class="check"><input type="checkbox" data-moagem value="${Util.esc(m)}" ${(c.moagens || []).includes(m) ? 'checked' : ''}> ${Util.esc(m)}</label>`).join('')}
+        </div>
+        <div class="item-cafe__acoes item-cafe__ordem">
           <button class="botao botao--sec botao--peq" data-mover="-1" type="button" title="Subir">↑</button>
           <button class="botao botao--sec botao--peq" data-mover="1" type="button" title="Descer">↓</button>
           <button class="botao botao--perigo botao--peq" data-remover type="button" title="Remover">✕</button>
@@ -422,18 +454,34 @@
       </div>`;
   }
 
+  function linhaTamanho(t) {
+    return `
+      <div class="tamanho">
+        <input class="entrada" data-t="peso" value="${Util.esc(t.peso)}" placeholder="250 g" aria-label="Tamanho">
+        <input class="entrada" data-t="preco" type="number" step="0.01" min="0" inputmode="decimal" value="${Util.esc(t.preco)}" placeholder="Preço R$" aria-label="Preço">
+        <button class="botao botao--perigo botao--peq" data-remover-tamanho type="button" title="Remover tamanho">✕</button>
+      </div>`;
+  }
+
   function lerCafesDaTela() {
     return [...document.querySelectorAll('.item-cafe')].map(el => {
       const c = { id: el.dataset.id };
       el.querySelectorAll('[data-k]').forEach(i => { c[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
-      c.preco = Number(c.preco) || 0;
+      c.tamanhos = [...el.querySelectorAll('.tamanho')].map(t => ({
+        peso: t.querySelector('[data-t="peso"]').value.trim(),
+        preco: t.querySelector('[data-t="preco"]').value === '' ? '' : Number(t.querySelector('[data-t="preco"]').value)
+      }));
+      c.moagens = [...el.querySelectorAll('[data-moagem]:checked')].map(i => i.value);
       return c;
     });
   }
 
   $('add-cafe').addEventListener('click', () => {
     dados.cafes = lerCafesDaTela();
-    dados.cafes.push({ id: '', nome: '', torrefacao: '', descricao: '', peso: '250 g', preco: '', ativo: true });
+    dados.cafes.push({
+      id: '', nome: '', torrefacao: '', descricao: '', ativo: true,
+      tamanhos: [{ peso: '250 g', preco: '' }, { peso: '1 kg', preco: '' }], moagens: MOAGENS.slice()
+    });
     renderCafes();
     const ultimo = [...document.querySelectorAll('.item-cafe')].pop();
     ultimo.querySelector('input').focus();
@@ -444,6 +492,15 @@
     if (!item) return;
     const lista = lerCafesDaTela();
     const i = [...document.querySelectorAll('.item-cafe')].indexOf(item);
+    if (e.target.closest('[data-add-tamanho]')) {
+      item.querySelector('.tamanhos').insertAdjacentHTML('beforeend', linhaTamanho({ peso: '', preco: '' }));
+      item.querySelector('.tamanho:last-child input').focus();
+      return;
+    }
+    if (e.target.closest('[data-remover-tamanho]')) {
+      e.target.closest('.tamanho').remove();
+      return;
+    }
     if (e.target.closest('[data-remover]')) {
       if (!confirm(`Remover "${lista[i].nome || 'café sem nome'}"? Pedidos antigos não são afetados.`)) return;
       lista.splice(i, 1);
@@ -465,7 +522,12 @@
   $('salvar-cafes').addEventListener('click', async () => {
     const lista = lerCafesDaTela();
     if (lista.some(c => !c.nome.trim())) return Util.aviso('Todo café precisa de um nome.', 'erro');
-    if (lista.some(c => !(c.preco > 0))) return Util.aviso('Todo café precisa de um preço maior que zero.', 'erro');
+    for (const c of lista) {
+      if (!c.tamanhos.length) return Util.aviso(`${c.nome}: adicione pelo menos um tamanho.`, 'erro');
+      if (c.tamanhos.some(t => !t.peso || !(t.preco > 0))) return Util.aviso(`${c.nome}: todo tamanho precisa de peso e preço maior que zero.`, 'erro');
+      if (new Set(c.tamanhos.map(t => t.peso)).size < c.tamanhos.length) return Util.aviso(`${c.nome}: há tamanhos repetidos.`, 'erro');
+      if (!c.moagens.length) return Util.aviso(`${c.nome}: marque pelo menos uma moagem.`, 'erro');
+    }
     $('salvar-cafes').disabled = true;
     try {
       dados.cafes = await chamar('admin.salvarCafes', { cafes: lista });

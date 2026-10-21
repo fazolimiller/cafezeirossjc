@@ -64,45 +64,58 @@
       $('cafes').innerHTML = '<p class="carregando">Nenhum café disponível nesta rodada.</p>';
       return;
     }
-    $('cafes').innerHTML = cafes.map(c => `
-      <article class="cafe" data-id="${Util.esc(c.id)}">
+    const dis = aberto() ? '' : 'disabled';
+    // Uma linha de quantidade para cada combinação de tamanho × moagem.
+    $('cafes').innerHTML = cafes.map((c, ci) => `
+      <article class="cafe" data-c="${ci}">
         ${c.torrefacao ? `<span class="cafe__torra">${Util.esc(c.torrefacao)}</span>` : ''}
         <h3>${Util.esc(c.nome)}</h3>
         <p class="cafe__desc">${Util.esc(c.descricao)}</p>
-        <div class="cafe__rodape">
-          <span class="cafe__preco">${Util.moeda(c.preco)}<span class="cafe__peso">${Util.esc(c.peso)}</span></span>
-          <span class="qtd" role="group" aria-label="Quantidade de ${Util.esc(c.nome)}">
-            <button type="button" data-acao="-" aria-label="Diminuir" ${aberto() ? '' : 'disabled'}>−</button>
-            <output aria-live="polite">0</output>
-            <button type="button" data-acao="+" aria-label="Aumentar" ${aberto() ? '' : 'disabled'}>+</button>
-          </span>
-        </div>
+        ${c.tamanhos.map((t, ti) => `
+          <div class="opcao">
+            <div class="opcao__cab"><span>${Util.esc(t.peso)}</span><strong>${Util.moeda(t.preco)}</strong></div>
+            ${c.moagens.map((m, mi) => `
+              <div class="opcao__linha" data-chave="${ci}|${ti}|${mi}">
+                <span>${Util.esc(m)}</span>
+                <span class="qtd" role="group" aria-label="${Util.esc(`${c.nome}, ${t.peso}, ${m}`)}">
+                  <button type="button" data-acao="-" aria-label="Diminuir" ${dis}>−</button>
+                  <output aria-live="polite">0</output>
+                  <button type="button" data-acao="+" aria-label="Aumentar" ${dis}>+</button>
+                </span>
+              </div>`).join('')}
+          </div>`).join('')}
       </article>`).join('');
   }
 
   $('cafes').addEventListener('click', e => {
     const botao = e.target.closest('button[data-acao]');
     if (!botao) return;
+    const linha = botao.closest('.opcao__linha');
+    const chave = linha.dataset.chave;
+    const nova = Math.max(0, Math.min(50, (quantidades[chave] || 0) + (botao.dataset.acao === '+' ? 1 : -1)));
+    quantidades[chave] = nova;
+    linha.querySelector('output').textContent = nova;
+    linha.classList.toggle('opcao__linha--ativa', nova > 0);
     const card = botao.closest('.cafe');
-    const id = card.dataset.id;
-    const atual = quantidades[id] || 0;
-    const nova = Math.max(0, Math.min(50, atual + (botao.dataset.acao === '+' ? 1 : -1)));
-    quantidades[id] = nova;
-    card.querySelector('output').textContent = nova;
-    card.classList.toggle('cafe--selecionado', nova > 0);
+    card.classList.toggle('cafe--selecionado', !!card.querySelector('.opcao__linha--ativa'));
     atualizarCarrinho();
   });
 
   function itensEscolhidos() {
-    return cafes.filter(c => quantidades[c.id] > 0).map(c => ({ cafe: c, quantidade: quantidades[c.id] }));
+    return Object.keys(quantidades).filter(k => quantidades[k] > 0).map(k => {
+      const [ci, ti, mi] = k.split('|').map(Number);
+      const cafe = cafes[ci];
+      const tamanho = cafe.tamanhos[ti];
+      return { cafe, peso: tamanho.peso, preco: tamanho.preco, moagem: cafe.moagens[mi], quantidade: quantidades[k] };
+    });
   }
 
   function atualizarCarrinho() {
     const itens = itensEscolhidos();
     $('carrinho-itens').innerHTML = itens.map(i =>
-      `<li><span>${i.quantidade}× ${Util.esc(i.cafe.nome)}</span><span>${Util.moeda(i.cafe.preco * i.quantidade)}</span></li>`).join('');
+      `<li><span>${i.quantidade}× ${Util.esc(i.cafe.nome)}<br><small class="suave">${Util.esc(i.peso)} · ${Util.esc(i.moagem)}</small></span><span>${Util.moeda(i.preco * i.quantidade)}</span></li>`).join('');
     $('carrinho-vazio').classList.toggle('oculto', itens.length > 0);
-    $('carrinho-total').textContent = Util.moeda(itens.reduce((s, i) => s + i.cafe.preco * i.quantidade, 0));
+    $('carrinho-total').textContent = Util.moeda(itens.reduce((s, i) => s + i.preco * i.quantidade, 0));
   }
 
   $('telefone').addEventListener('input', e => {
@@ -126,7 +139,7 @@
     try {
       const pedido = await Api.chamar('criarPedido', {
         nome, telefone, observacoes: $('observacoes').value,
-        itens: itens.map(i => ({ cafeId: i.cafe.id, quantidade: i.quantidade }))
+        itens: itens.map(i => ({ cafeId: i.cafe.id, peso: i.peso, moagem: i.moagem, quantidade: i.quantidade }))
       });
       gravarLocal(CHAVE_CLIENTE, { nome, telefone });
       gravarLocal(CHAVE_ULTIMO, pedido);
@@ -147,7 +160,7 @@
     $('conf-rodada').textContent = pedido.rodada;
     $('conf-nome').textContent = `${pedido.nome} · ${Util.telefone(pedido.telefone)}`;
     $('conf-itens').innerHTML = pedido.itens.map(i => `
-      <tr><td>${Util.esc(i.cafe)}</td><td class="num">${i.quantidade}</td>
+      <tr><td>${Util.esc(i.cafe)}<br><small class="suave">${Util.esc(i.peso)} · ${Util.esc(i.moagem)}</small></td><td class="num">${i.quantidade}</td>
       <td class="num">${Util.moeda(i.preco)}</td><td class="num">${Util.moeda(i.subtotal)}</td></tr>`).join('');
     $('conf-total').textContent = Util.moeda(pedido.total);
     $('pix-valor').textContent = Util.moeda(pedido.total);

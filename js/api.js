@@ -21,7 +21,7 @@ const Api = (() => {
 
   /* ---------- Modo demonstração ---------- */
 
-  const CHAVE = 'cafezeiros-demo-v1';
+  const CHAVE = 'cafezeiros-demo-v2';
   const SENHA_DEMO = 'cafe';
 
   function carregar() {
@@ -35,8 +35,8 @@ const Api = (() => {
         pixNome: 'CAFEZEIROS SJC', pixCidade: 'SAO JOSE DOS CAMPOS', whatsapp: '', aviso: ''
       },
       cafes: [
-        { id: 'exemplo-1', nome: 'Café de exemplo 1', torrefacao: 'Torrefação (editar)', descricao: 'Edite pelo painel: notas sensoriais, origem, processo.', peso: '250 g', preco: 45, ativo: true, ordem: 1 },
-        { id: 'exemplo-2', nome: 'Café de exemplo 2', torrefacao: 'Torrefação (editar)', descricao: 'Edite pelo painel: notas sensoriais, origem, processo.', peso: '500 g', preco: 79.9, ativo: true, ordem: 2 }
+        { id: 'exemplo-1', nome: 'Café de exemplo', torrefacao: 'Torrefação (editar)', descricao: 'Edite pelo painel: notas sensoriais, origem, processo.', tamanhos: [{ peso: '250 g', preco: 45 }, { peso: '1 kg', preco: 160 }], moagens: ['Em grãos', 'Moído'], ativo: true, ordem: 1 },
+        { id: 'julia', nome: 'Café da Júlia', torrefacao: 'Torrefação (editar)', descricao: 'Disponível só em 250 g.', tamanhos: [{ peso: '250 g', preco: 50 }], moagens: ['Em grãos', 'Moído'], ativo: true, ordem: 2 }
       ],
       pedidos: []
     };
@@ -67,9 +67,12 @@ const Api = (() => {
         const cafe = db.cafes.find(c => c.id === i.cafeId && c.ativo);
         const qtd = Math.floor(Number(i.quantidade) || 0);
         if (!cafe || qtd <= 0) return;
+        const tamanho = cafe.tamanhos.find(t => t.peso === i.peso);
+        if (!tamanho) throw new Error(`Tamanho indisponível para ${cafe.nome}.`);
+        if (!cafe.moagens.includes(i.moagem)) throw new Error(`Moagem indisponível para ${cafe.nome}.`);
         itens.push({
-          cafeId: cafe.id, cafe: cafe.nome + (cafe.peso ? ` (${cafe.peso})` : ''),
-          preco: cafe.preco, quantidade: qtd, subtotal: centavos(cafe.preco * qtd)
+          cafeId: cafe.id, cafe: cafe.nome, peso: tamanho.peso, moagem: i.moagem,
+          preco: tamanho.preco, quantidade: qtd, subtotal: centavos(tamanho.preco * qtd)
         });
       });
       if (!itens.length) throw new Error('Escolha pelo menos um café.');
@@ -109,8 +112,15 @@ const Api = (() => {
     'admin.salvarCafes'(db, p) {
       exigirAdmin(p);
       db.cafes = (p.cafes || []).filter(c => c.nome).map((c, i) => ({
-        ...c, id: c.id || Math.random().toString(36).slice(2, 10), preco: centavos(Number(c.preco) || 0), ativo: !!c.ativo, ordem: i + 1
+        ...c, id: c.id || Math.random().toString(36).slice(2, 10), ativo: !!c.ativo, ordem: i + 1,
+        tamanhos: (c.tamanhos || []).map(t => ({ peso: String(t.peso).trim(), preco: centavos(Number(t.preco) || 0) }))
+          .filter(t => t.peso && t.preco > 0),
+        moagens: (c.moagens || []).filter(Boolean)
       }));
+      db.cafes.forEach(c => {
+        if (!c.tamanhos.length) throw new Error(`${c.nome}: informe pelo menos um tamanho com preço.`);
+        if (!c.moagens.length) throw new Error(`${c.nome}: marque pelo menos uma moagem.`);
+      });
       return db.cafes;
     },
     'admin.salvarConfig'(db, p) {

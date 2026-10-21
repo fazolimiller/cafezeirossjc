@@ -9,16 +9,17 @@
 
 const ABAS = {
   Pedidos: ['id', 'criadoEm', 'rodada', 'nome', 'telefone', 'itens', 'total', 'status', 'valorPago', 'pagoEm', 'observacoes', 'atualizadoEm'],
-  Itens: ['pedidoId', 'criadoEm', 'rodada', 'nome', 'cafeId', 'cafe', 'preco', 'quantidade', 'subtotal', 'status'],
-  Cafes: ['id', 'nome', 'torrefacao', 'descricao', 'peso', 'preco', 'ativo', 'ordem'],
+  Itens: ['pedidoId', 'criadoEm', 'rodada', 'nome', 'cafeId', 'cafe', 'peso', 'moagem', 'preco', 'quantidade', 'subtotal', 'status'],
+  // tamanhos: JSON [{"peso":"250 g","preco":45}, ...]; moagens: lista separada por vírgula
+  Cafes: ['id', 'nome', 'torrefacao', 'descricao', 'tamanhos', 'moagens', 'ativo', 'ordem'],
   Config: ['chave', 'valor']
 };
 
 // Colunas que devem ser texto puro (evita perder zeros à esquerda em telefones etc.)
 const COLUNAS_TEXTO = {
   Pedidos: ['id', 'rodada', 'nome', 'telefone', 'itens', 'status', 'observacoes'],
-  Itens: ['pedidoId', 'rodada', 'nome', 'cafeId', 'cafe', 'status'],
-  Cafes: ['id', 'nome', 'torrefacao', 'descricao', 'peso'],
+  Itens: ['pedidoId', 'rodada', 'nome', 'cafeId', 'cafe', 'peso', 'moagem', 'status'],
+  Cafes: ['id', 'nome', 'torrefacao', 'descricao', 'tamanhos', 'moagens'],
   Config: ['chave', 'valor']
 };
 
@@ -126,13 +127,18 @@ function criarPedido_(p) {
     const cafe = cafes[i.cafeId];
     const qtd = Math.floor(Number(i.quantidade) || 0);
     if (!cafe || qtd <= 0) return;
+    const tamanho = cafe.tamanhos.filter(t => t.peso === i.peso)[0];
+    if (!tamanho) throw new Error('Tamanho indisponível para ' + cafe.nome + '.');
+    if (cafe.moagens.indexOf(i.moagem) < 0) throw new Error('Moagem indisponível para ' + cafe.nome + '.');
     if (qtd > 50) throw new Error('Quantidade muito alta para ' + cafe.nome + '.');
     itens.push({
       cafeId: cafe.id,
-      cafe: cafe.nome + (cafe.peso ? ' (' + cafe.peso + ')' : ''),
-      preco: cafe.preco,
+      cafe: cafe.nome,
+      peso: tamanho.peso,
+      moagem: i.moagem,
+      preco: tamanho.preco,
       quantidade: qtd,
-      subtotal: centavos_(cafe.preco * qtd)
+      subtotal: centavos_(tamanho.preco * qtd)
     });
   });
   if (!itens.length) throw new Error('Escolha pelo menos um café.');
@@ -200,11 +206,17 @@ function salvarCafes_(lista) {
     nome: limpar_(c.nome, 80),
     torrefacao: limpar_(c.torrefacao, 80),
     descricao: limpar_(c.descricao, 400),
-    peso: limpar_(c.peso, 30),
-    preco: centavos_(Number(c.preco) || 0),
+    tamanhos: JSON.stringify((c.tamanhos || [])
+      .map(t => ({ peso: limpar_(t.peso, 30), preco: centavos_(Number(t.preco) || 0) }))
+      .filter(t => t.peso && t.preco > 0)),
+    moagens: (c.moagens || []).map(m => limpar_(m, 40)).filter(String).join(', '),
     ativo: c.ativo ? 'sim' : 'não',
     ordem: i + 1
   })).filter(c => c.nome);
+  cafes.forEach(c => {
+    if (c.tamanhos === '[]') throw new Error(c.nome + ': informe pelo menos um tamanho com preço.');
+    if (!c.moagens) throw new Error(c.nome + ': marque pelo menos uma moagem.');
+  });
   reescrever_('Cafes', cafes);
   return lerCafes_();
 }
@@ -284,11 +296,20 @@ function lerCafes_() {
   return ler_('Cafes')
     .map(c => Object.assign({}, c, {
       id: String(c.id),
-      preco: Number(c.preco) || 0,
+      tamanhos: lerTamanhos_(c.tamanhos),
+      moagens: String(c.moagens || '').split(',').map(m => m.trim()).filter(String),
       ativo: String(c.ativo).toLowerCase() === 'sim' || c.ativo === true,
       ordem: Number(c.ordem) || 0
     }))
     .sort((a, b) => a.ordem - b.ordem);
+}
+
+function lerTamanhos_(texto) {
+  try {
+    return JSON.parse(texto || '[]').map(t => ({ peso: String(t.peso), preco: Number(t.preco) || 0 }));
+  } catch (e) {
+    return [];
+  }
 }
 
 function lerConfig_() {
@@ -323,9 +344,10 @@ function garantirEstrutura_() {
   });
 }
 
+// Preços de exemplo: substitua pelo painel em "Cafés e preços".
 const CAFES_EXEMPLO = [
-  { id: 'exemplo-1', nome: 'Café de exemplo 1', torrefacao: 'Torrefação (editar)', descricao: 'Edite pelo painel: notas sensoriais, origem, processo.', peso: '250 g', preco: 45, ativo: 'sim', ordem: 1 },
-  { id: 'exemplo-2', nome: 'Café de exemplo 2', torrefacao: 'Torrefação (editar)', descricao: 'Edite pelo painel: notas sensoriais, origem, processo.', peso: '500 g', preco: 79.9, ativo: 'sim', ordem: 2 }
+  { id: 'exemplo-1', nome: 'Café de exemplo', torrefacao: 'Torrefação (editar)', descricao: 'Edite pelo painel: notas sensoriais, origem, processo.', tamanhos: '[{"peso":"250 g","preco":45},{"peso":"1 kg","preco":160}]', moagens: 'Em grãos, Moído', ativo: 'sim', ordem: 1 },
+  { id: 'julia', nome: 'Café da Júlia', torrefacao: 'Torrefação (editar)', descricao: 'Disponível só em 250 g.', tamanhos: '[{"peso":"250 g","preco":50}]', moagens: 'Em grãos, Moído', ativo: 'sim', ordem: 2 }
 ];
 
 function aba_(nome) {
