@@ -418,59 +418,97 @@
 
   /* ---------- Cafés ---------- */
 
-  function renderCafes() {
-    $('lista-cafes').innerHTML = dados.cafes.map(linhaCafe).join('') || '<p class="suave">Nenhum café cadastrado.</p>';
+  const MOAGENS = ['Em grãos', 'Moído'];
+  const PESOS = ['250 g', '500 g', '1 kg'];
+  let cafesAlterados = false;
+
+  function marcarAlterado(sim = true) {
+    cafesAlterados = sim;
+    $('cafes-pendente').classList.toggle('oculto', !sim);
   }
 
-  const MOAGENS = ['Em grãos', 'Moído'];
+  window.addEventListener('beforeunload', e => {
+    if (cafesAlterados) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  function renderCafes() {
+    $('lista-cafes').innerHTML = dados.cafes.map(linhaCafe).join('') ||
+      '<p class="suave">Nenhum café cadastrado. Clique em “Adicionar café”.</p>';
+    $('cafes-contagem').textContent = `${dados.cafes.filter(c => c.ativo).length} de ${dados.cafes.length} no site`;
+  }
 
   function linhaCafe(c) {
     const v = k => Util.esc(c[k] === undefined ? '' : c[k]);
-    const extras = (c.moagens || []).filter(m => !MOAGENS.includes(m));
+    const tamanhos = c.tamanhos || [];
+    const preco = peso => (tamanhos.find(t => t.peso === peso) || {}).preco;
+    const extrasMoagem = (c.moagens || []).filter(m => !MOAGENS.includes(m));
     return `
       <div class="item-cafe ${c.ativo ? '' : 'item-cafe--inativo'}" data-id="${v('id')}">
-        <div class="campo campo--nome"><label>Nome</label><input data-k="nome" value="${v('nome')}" placeholder="Nome do café"></div>
-        <div class="campo"><label>Torrefação</label><input data-k="torrefacao" value="${v('torrefacao')}"></div>
-        <div class="item-cafe__acoes">
-          <label class="check"><input data-k="ativo" type="checkbox" ${c.ativo ? 'checked' : ''}> Ativo</label>
+        <div class="item-cafe__topo">
+          <input class="item-cafe__nome" data-k="nome" value="${v('nome')}" placeholder="Nome do café" aria-label="Nome do café">
+          <label class="interruptor" title="Mostrar este café no site">
+            <input data-k="ativo" type="checkbox" ${c.ativo ? 'checked' : ''}><span>No site</span>
+          </label>
         </div>
-        <div class="campo campo--desc"><label>Descrição</label><input data-k="descricao" value="${v('descricao')}" placeholder="Notas, origem, processo…"></div>
-        <div class="campo">
-          <span class="rotulo">Tamanhos e preços</span>
-          <div class="tamanhos">
-            ${(c.tamanhos || []).map(linhaTamanho).join('')}
+        <div class="item-cafe__corpo">
+          <div class="campo"><label>Torrefação</label><input data-k="torrefacao" value="${v('torrefacao')}"></div>
+          <div class="campo"><label>Descrição</label><input data-k="descricao" value="${v('descricao')}" placeholder="Notas, origem, processo…"></div>
+
+          <div class="campo">
+            <span class="rotulo">Peso e preço</span>
+            <div class="pesos">
+              ${PESOS.map(p => {
+                const ativo = preco(p) !== undefined;
+                return `
+                <label class="peso ${ativo ? 'peso--ativo' : ''}">
+                  <input type="checkbox" data-peso="${p}" ${ativo ? 'checked' : ''}>
+                  <span class="peso__nome">${p}</span>
+                  <span class="peso__preco">R$ <input data-preco type="number" step="0.01" min="0" inputmode="decimal" value="${ativo ? Util.esc(preco(p)) : ''}" placeholder="0,00" aria-label="Preço ${p}" ${ativo ? '' : 'disabled'}></span>
+                </label>`;
+              }).join('')}
+              ${tamanhos.filter(t => !PESOS.includes(t.peso)).map(linhaPesoExtra).join('')}
+            </div>
+            <button class="link-acao" data-add-peso type="button">+ outro peso</button>
           </div>
-          <button class="link-acao" data-add-tamanho type="button">+ tamanho</button>
+
+          <div class="campo">
+            <span class="rotulo">Moagem</span>
+            <div class="moagens">
+              ${MOAGENS.concat(extrasMoagem).map(m => `
+                <label class="chip"><input type="checkbox" data-moagem value="${Util.esc(m)}" ${(c.moagens || []).includes(m) ? 'checked' : ''}><span>${Util.esc(m)}</span></label>`).join('')}
+            </div>
+          </div>
         </div>
-        <div class="campo">
-          <span class="rotulo">Moagens disponíveis</span>
-          ${MOAGENS.concat(extras).map(m => `<label class="check"><input type="checkbox" data-moagem value="${Util.esc(m)}" ${(c.moagens || []).includes(m) ? 'checked' : ''}> ${Util.esc(m)}</label>`).join('')}
-        </div>
-        <div class="item-cafe__acoes item-cafe__ordem">
-          <button class="botao botao--sec botao--peq" data-mover="-1" type="button" title="Subir">↑</button>
-          <button class="botao botao--sec botao--peq" data-mover="1" type="button" title="Descer">↓</button>
-          <button class="botao botao--perigo botao--peq" data-remover type="button" title="Remover">✕</button>
+        <div class="item-cafe__acoes">
+          <button class="botao botao--sec botao--peq" data-mover="-1" type="button" title="Mover para cima">↑</button>
+          <button class="botao botao--sec botao--peq" data-mover="1" type="button" title="Mover para baixo">↓</button>
+          <button class="botao botao--sec botao--peq" data-duplicar type="button">Duplicar</button>
+          <button class="botao botao--perigo botao--peq" data-remover type="button">Remover café</button>
         </div>
       </div>`;
   }
 
-  function linhaTamanho(t) {
+  function linhaPesoExtra(t) {
     return `
-      <div class="tamanho">
-        <input class="entrada" data-t="peso" value="${Util.esc(t.peso)}" placeholder="250 g" aria-label="Tamanho">
-        <input class="entrada" data-t="preco" type="number" step="0.01" min="0" inputmode="decimal" value="${Util.esc(t.preco)}" placeholder="Preço R$" aria-label="Preço">
-        <button class="botao botao--perigo botao--peq" data-remover-tamanho type="button" title="Remover tamanho">✕</button>
+      <div class="peso peso--ativo peso--extra">
+        <input class="peso__nome-entrada" data-peso-extra value="${Util.esc(t.peso)}" placeholder="Ex.: 340 g" aria-label="Peso">
+        <span class="peso__preco">R$ <input data-preco type="number" step="0.01" min="0" inputmode="decimal" value="${Util.esc(t.preco)}" placeholder="0,00" aria-label="Preço"></span>
+        <button class="botao botao--perigo botao--peq" data-remover-peso type="button" title="Remover peso">✕</button>
       </div>`;
   }
 
   function lerCafesDaTela() {
     return [...document.querySelectorAll('.item-cafe')].map(el => {
       const c = { id: el.dataset.id };
-      el.querySelectorAll('[data-k]').forEach(i => { c[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
-      c.tamanhos = [...el.querySelectorAll('.tamanho')].map(t => ({
-        peso: t.querySelector('[data-t="peso"]').value.trim(),
-        preco: t.querySelector('[data-t="preco"]').value === '' ? '' : Number(t.querySelector('[data-t="preco"]').value)
-      }));
+      el.querySelectorAll('[data-k]').forEach(i => { c[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value.trim(); });
+      const precoDe = linha => {
+        const v = linha.querySelector('[data-preco]').value;
+        return v === '' ? '' : Number(v);
+      };
+      c.tamanhos = [
+        ...[...el.querySelectorAll('[data-peso]:checked')].map(i => ({ peso: i.dataset.peso, preco: precoDe(i.closest('.peso')) })),
+        ...[...el.querySelectorAll('[data-peso-extra]')].map(i => ({ peso: i.value.trim(), preco: precoDe(i.closest('.peso')) }))
+      ];
       c.moagens = [...el.querySelectorAll('[data-moagem]:checked')].map(i => i.value);
       return c;
     });
@@ -483,27 +521,33 @@
       tamanhos: [{ peso: '250 g', preco: '' }, { peso: '1 kg', preco: '' }], moagens: MOAGENS.slice()
     });
     renderCafes();
+    marcarAlterado();
     const ultimo = [...document.querySelectorAll('.item-cafe')].pop();
-    ultimo.querySelector('input').focus();
+    ultimo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    ultimo.querySelector('.item-cafe__nome').focus({ preventScroll: true });
   });
 
   $('lista-cafes').addEventListener('click', e => {
     const item = e.target.closest('.item-cafe');
     if (!item) return;
+    if (e.target.closest('[data-add-peso]')) {
+      item.querySelector('.pesos').insertAdjacentHTML('beforeend', linhaPesoExtra({ peso: '', preco: '' }));
+      item.querySelector('.peso--extra:last-child input').focus();
+      marcarAlterado();
+      return;
+    }
+    if (e.target.closest('[data-remover-peso]')) {
+      e.target.closest('.peso').remove();
+      marcarAlterado();
+      return;
+    }
     const lista = lerCafesDaTela();
     const i = [...document.querySelectorAll('.item-cafe')].indexOf(item);
-    if (e.target.closest('[data-add-tamanho]')) {
-      item.querySelector('.tamanhos').insertAdjacentHTML('beforeend', linhaTamanho({ peso: '', preco: '' }));
-      item.querySelector('.tamanho:last-child input').focus();
-      return;
-    }
-    if (e.target.closest('[data-remover-tamanho]')) {
-      e.target.closest('.tamanho').remove();
-      return;
-    }
     if (e.target.closest('[data-remover]')) {
-      if (!confirm(`Remover "${lista[i].nome || 'café sem nome'}"? Pedidos antigos não são afetados.`)) return;
+      if (!confirm(`Remover "${lista[i].nome || 'café sem nome'}"? Pedidos antigos não são afetados.\nDica: para tirar do site só neste mês, desligue "No site".`)) return;
       lista.splice(i, 1);
+    } else if (e.target.closest('[data-duplicar]')) {
+      lista.splice(i + 1, 0, Object.assign({}, lista[i], { id: '', nome: lista[i].nome + ' (cópia)' }));
     } else if (e.target.closest('[data-mover]')) {
       const j = i + Number(e.target.closest('[data-mover]').dataset.mover);
       if (j < 0 || j >= lista.length) return;
@@ -513,25 +557,37 @@
     }
     dados.cafes = lista;
     renderCafes();
+    marcarAlterado();
   });
 
+  $('lista-cafes').addEventListener('input', () => marcarAlterado());
   $('lista-cafes').addEventListener('change', e => {
-    if (e.target.dataset.k === 'ativo') e.target.closest('.item-cafe').classList.toggle('item-cafe--inativo', !e.target.checked);
+    marcarAlterado();
+    const t = e.target;
+    if (t.dataset.k === 'ativo') t.closest('.item-cafe').classList.toggle('item-cafe--inativo', !t.checked);
+    if (t.dataset.peso) {
+      const linha = t.closest('.peso');
+      const preco = linha.querySelector('[data-preco]');
+      linha.classList.toggle('peso--ativo', t.checked);
+      preco.disabled = !t.checked;
+      if (t.checked) preco.focus();
+    }
   });
 
   $('salvar-cafes').addEventListener('click', async () => {
     const lista = lerCafesDaTela();
-    if (lista.some(c => !c.nome.trim())) return Util.aviso('Todo café precisa de um nome.', 'erro');
+    if (lista.some(c => !c.nome)) return Util.aviso('Todo café precisa de um nome.', 'erro');
     for (const c of lista) {
-      if (!c.tamanhos.length) return Util.aviso(`${c.nome}: adicione pelo menos um tamanho.`, 'erro');
-      if (c.tamanhos.some(t => !t.peso || !(t.preco > 0))) return Util.aviso(`${c.nome}: todo tamanho precisa de peso e preço maior que zero.`, 'erro');
-      if (new Set(c.tamanhos.map(t => t.peso)).size < c.tamanhos.length) return Util.aviso(`${c.nome}: há tamanhos repetidos.`, 'erro');
+      if (!c.tamanhos.length) return Util.aviso(`${c.nome}: marque pelo menos um peso.`, 'erro');
+      if (c.tamanhos.some(t => !t.peso || !(t.preco > 0))) return Util.aviso(`${c.nome}: informe o preço de cada peso marcado.`, 'erro');
+      if (new Set(c.tamanhos.map(t => t.peso)).size < c.tamanhos.length) return Util.aviso(`${c.nome}: há pesos repetidos.`, 'erro');
       if (!c.moagens.length) return Util.aviso(`${c.nome}: marque pelo menos uma moagem.`, 'erro');
     }
     $('salvar-cafes').disabled = true;
     try {
       dados.cafes = await chamar('admin.salvarCafes', { cafes: lista });
       renderCafes();
+      marcarAlterado(false);
       Util.aviso('Cafés salvos! O site já mostra os novos preços.');
     } catch (err) {
       Util.aviso(err.message, 'erro');
